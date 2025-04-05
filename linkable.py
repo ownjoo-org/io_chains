@@ -54,10 +54,7 @@ class Linkable(ABC, Subscriber):
         while self._subscribers and not self._queue.empty():
             message = self._queue.get()
             for subscriber in self._subscribers:
-                if self._processor:
-                    subscriber.push(self._processor(message))
-                else:
-                    subscriber.push(message)
+                subscriber.push(message)
 
     def _fill_queue_from_input(self) -> None:
         if self._input:
@@ -72,7 +69,10 @@ class Linkable(ABC, Subscriber):
 
     def push(self, value: Any) -> None:
         if value is not END_OF_QUEUE:
-            self._queue.put(value)
+            if self._processor:
+                self._queue.put(self._processor(value))
+            else:
+                self._queue.put(value)
             self._publish()
         else:
             self._processing = False
