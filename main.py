@@ -14,7 +14,7 @@ def main():
     linkable2 = Linkable(subscribers=subscriber2)
     my_chain = Linkable(
         in_iter=range(10),
-        processor=lambda message, *args, **kwargs: message,
+        processor=lambda message, *args, **kwargs: f'MESSAGE: {message=}',
         subscribers=[
             linkable1,
             linkable2,

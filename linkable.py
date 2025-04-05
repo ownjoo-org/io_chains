@@ -54,13 +54,19 @@ class Linkable(ABC, Subscriber):
         while self._subscribers and not self._queue.empty():
             message = self._queue.get()
             for subscriber in self._subscribers:
-                subscriber.push(message)
+                if self._processor:
+                    subscriber.push(self._processor(message))
+                else:
+                    subscriber.push(message)
 
     def _fill_queue_from_input(self) -> None:
         if self._input:
             while self._processing and not self._queue.full():
                 try:
-                    self._queue.put(next(self._input))
+                    if self._processing:
+                        self._queue.put(self._processor(next(self._input)))
+                    else:
+                        self._queue.put(next(self._input))
                 except StopIteration:
                     self._processing = False
 
