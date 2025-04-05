@@ -10,7 +10,7 @@ class PrintSubscriber(Subscriber):
 def main():
     linkable1 = Linkable(
         subscribers=PrintSubscriber(),
-        processor=lambda message, *args, **kwargs: f'SUBSCRIBER MESSAGE: {message=}',
+        processor=lambda message, *args, **kwargs: f'SUBSCRIBER PROCESSOR MESSAGE: {message=}',
     )
     linkable2 = Linkable(
         subscribers=PrintSubscriber(),
@@ -21,7 +21,7 @@ def main():
             linkable1,
             linkable2,
         ],
-        processor=lambda message, *args, **kwargs: print(f'PROCESSOR MESSAGE: {message=}'),
+        processor=lambda message, *args, **kwargs: print(f'CHAIN PROCESSOR MESSAGE: {message=}'),
     )
     my_chain()
 
