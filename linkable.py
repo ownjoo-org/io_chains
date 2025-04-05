@@ -78,6 +78,6 @@ class Linkable(ABC, Subscriber):
             self._processing = False
 
     def __call__(self) -> None:
-        while self._processor and self._processing:
+        while self._processing:
             self._fill_queue_from_input()
             self._publish()

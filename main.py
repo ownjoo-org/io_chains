@@ -8,17 +8,20 @@ class PrintSubscriber(Subscriber):
 
 
 def main():
-    subscriber1 = PrintSubscriber()
-    subscriber2 = PrintSubscriber()
-    linkable1 = Linkable(subscribers=subscriber1)
-    linkable2 = Linkable(subscribers=subscriber2)
+    linkable1 = Linkable(
+        subscribers=PrintSubscriber(),
+        processor=lambda message, *args, **kwargs: f'SUBSCRIBER MESSAGE: {message=}',
+    )
+    linkable2 = Linkable(
+        subscribers=PrintSubscriber(),
+    )
     my_chain = Linkable(
         in_iter=range(10),
-        processor=lambda message, *args, **kwargs: f'MESSAGE: {message=}',
         subscribers=[
             linkable1,
             linkable2,
         ],
+        processor=lambda message, *args, **kwargs: print(f'PROCESSOR MESSAGE: {message=}'),
     )
     my_chain()
 
