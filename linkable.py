@@ -60,7 +60,7 @@ class Linkable(ABC, Subscriber):
         if self._input:
             while self._processing and not self._queue.full():
                 try:
-                    if self._processor:
+                    if self._processor and isinstance(self._processor, Callable):
                         self._queue.put(self._processor(next(self._input)))
                     else:
                         self._queue.put(next(self._input))
@@ -69,7 +69,7 @@ class Linkable(ABC, Subscriber):
 
     def push(self, value: Any) -> None:
         if value is not END_OF_QUEUE:
-            if self._processor:
+            if self._processor and isinstance(self._processor, Callable):
                 self._queue.put(self._processor(value))
             else:
                 self._queue.put(value)
