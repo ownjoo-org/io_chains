@@ -60,7 +60,7 @@ class Linkable(ABC, Subscriber):
         if self._input:
             while self._processing and not self._queue.full():
                 try:
-                    if self._processing:
+                    if self._processor:
                         self._queue.put(self._processor(next(self._input)))
                     else:
                         self._queue.put(next(self._input))
