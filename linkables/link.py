@@ -15,7 +15,8 @@ class Link(Linkable):
         subscribers: Union[Iterable[Subscribable], None, Subscribable] = None,
         **kwargs
     ) -> None:
-        self._input: Iterator = iter(in_iter) if in_iter else None
+        self._input: Union[Callable, Iterator, None] = None
+        self.input = in_iter
         self._queue: Queue = Queue(maxsize=100)
         self._processor: Optional[Callable] = processor
         self._processing: bool = True
@@ -24,10 +25,16 @@ class Link(Linkable):
 
     @property
     def input(self) -> Any:
-        return self._input
+        if isinstance(self._input, Callable):
+            return self._input()
+        else:
+            return self._input
 
     @input.setter
-    def input(self, in_obj: Optional[Iterable] = None) -> None:
+    def input(self, in_obj: Union[Callable, Iterable, None] = None) -> None:
+        if in_obj:
+            if not isinstance(in_obj, (Callable, Iterable)):
+                raise TypeError(f'in_iter must be Callable or Iterable, got {type(in_obj)}')
         self._input = in_obj
 
     @property
@@ -60,15 +67,15 @@ class Link(Linkable):
                 subscriber.push(message)
 
     def _fill_queue_from_input(self) -> None:
-        if self._input:
+        if self.input:
             while self._processing and not self._queue.full():
                 try:
                     if self._processor and isinstance(
                         self._processor, Callable
                     ):
-                        self._queue.put(self._processor(next(self._input)))
+                        self._queue.put(self._processor(next(self.input)))
                     else:
-                        self._queue.put(next(self._input))
+                        self._queue.put(next(self.input))
                 except StopIteration:
                     self._processing = False
 
