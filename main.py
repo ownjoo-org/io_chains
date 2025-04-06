@@ -7,11 +7,6 @@ from linkables.link import Link
 from linkables.subscriber import Subscriber
 
 
-class PrintSubscriber(Subscriber):
-    def push(self, value):
-        print(value, flush=True)
-
-
 def get_rick_and_morty() -> Generator[Response, None, None]:
     response: Response = get(url='https://rickandmortyapi.com/api/')
     yield response
@@ -20,11 +15,13 @@ def get_rick_and_morty() -> Generator[Response, None, None]:
 def main():
     headers_link = Link(
         processor=lambda resp, *args, **kwargs: f'\n\n{resp.headers=}\n\n',
-        subscribers=PrintSubscriber(),
+        subscribers=[
+            Subscriber(callback=lambda value: print(value)),
+        ],
     )
     json_link = Link(
         processor=lambda resp, *args, **kwargs: f'\n\n{resp.json()=}\n\n',
-        subscribers=PrintSubscriber(),
+        subscribers=Subscriber(callback=lambda value: print(value)),
     )
 
     rick_and_morty_extractor: ExtractLink = ExtractLink(
