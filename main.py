@@ -1,5 +1,6 @@
-from linkable import Linkable
-from subscriber import Subscriber
+from linkables.chain import Chain
+from linkables.link import Link
+from linkables.subscriber import Subscriber
 
 
 class PrintSubscriber(Subscriber):
@@ -8,14 +9,15 @@ class PrintSubscriber(Subscriber):
 
 
 def main():
-    linkable1 = Linkable(
+    linkable1 = Link(
         subscribers=PrintSubscriber(),
         processor=lambda message, *args, **kwargs: f'SUBSCRIBER PROCESSOR MESSAGE: {message=}',
     )
-    linkable2 = Linkable(
+    linkable2 = Link(
         subscribers=PrintSubscriber(),
     )
-    my_chain = Linkable(
+
+    my_chain = Chain(
         in_iter=range(10),
         subscribers=[
             linkable1,

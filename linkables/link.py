@@ -1,13 +1,11 @@
-from abc import ABC
 from queue import Queue
-from typing import Any, Callable, Iterable, Optional, Union, Iterator
+from typing import Any, Callable, Iterable, Iterator, Optional, Union
 
-from subscriber import Subscriber
+from linkables.linkable import END_OF_QUEUE, Linkable
+from linkables.subscriber import Subscriber
 
-END_OF_QUEUE: str = 'END_OF_QUEUE'
 
-
-class Linkable(ABC, Subscriber):
+class Link(Linkable):
     def __init__(
             self,
             in_iter: Iterable = None,
