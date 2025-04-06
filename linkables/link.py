@@ -9,9 +9,11 @@ from linkables.subscriber import Subscriber
 class Link(Linkable):
     def __init__(
         self,
+        *args,
         in_iter: Iterable = None,
         processor: Optional[Callable] = None,
         subscribers: Union[Iterable[Subscriber], None, Subscriber] = None,
+        **kwargs
     ) -> None:
         self._input: Iterator = iter(in_iter) if in_iter else None
         self._queue: Queue = Queue(maxsize=100)
