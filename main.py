@@ -18,18 +18,21 @@ def get_rick_and_morty() -> Generator[Response, None, None]:
 
 
 def main():
-    linkable1 = Link(
-        subscribers=PrintSubscriber(),
+    headers_link = Link(
         processor=lambda resp, *args, **kwargs: f'\n\n{resp.headers=}\n\n',
-    )
-    linkable2 = Link(
         subscribers=PrintSubscriber(),
+    )
+    json_link = Link(
         processor=lambda resp, *args, **kwargs: f'\n\n{resp.json()=}\n\n',
+        subscribers=PrintSubscriber(),
     )
 
     rick_and_morty_extractor: ExtractLink = ExtractLink(
         processor=get_rick_and_morty,
-        subscribers=[linkable1, linkable2],
+        subscribers=[
+            headers_link,
+            json_link,
+        ],
     )
     rick_and_morty_extractor()
 
