@@ -1,0 +1,1 @@
+END_OF_QUEUE: str = 'END_OF_QUEUE'

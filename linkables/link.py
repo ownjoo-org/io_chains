@@ -1,16 +1,17 @@
 from queue import Queue
 from typing import Any, Callable, Iterable, Iterator, Optional, Union
 
-from linkables.linkable import END_OF_QUEUE, Linkable
+from linkables.consts import END_OF_QUEUE
+from linkables.linkable import Linkable
 from linkables.subscriber import Subscriber
 
 
 class Link(Linkable):
     def __init__(
-            self,
-            in_iter: Iterable = None,
-            processor: Optional[Callable] = None,
-            subscribers: Union[Iterable[Subscriber], None, Subscriber] = None,
+        self,
+        in_iter: Iterable = None,
+        processor: Optional[Callable] = None,
+        subscribers: Union[Iterable[Subscriber], None, Subscriber] = None,
     ) -> None:
         self._input: Iterator = iter(in_iter) if in_iter else None
         self._queue: Queue = Queue(maxsize=100)
@@ -40,7 +41,9 @@ class Link(Linkable):
         return self._subscribers
 
     @subscribers.setter
-    def subscribers(self, subscribers: Union[Iterable[Subscriber], None, Subscriber]) -> None:
+    def subscribers(
+        self, subscribers: Union[Iterable[Subscriber], None, Subscriber]
+    ) -> None:
         if isinstance(subscribers, Subscriber):
             self._subscribers.append(subscribers)
         elif isinstance(subscribers, Iterable):
@@ -58,7 +61,9 @@ class Link(Linkable):
         if self._input:
             while self._processing and not self._queue.full():
                 try:
-                    if self._processor and isinstance(self._processor, Callable):
+                    if self._processor and isinstance(
+                        self._processor, Callable
+                    ):
                         self._queue.put(self._processor(next(self._input)))
                     else:
                         self._queue.put(next(self._input))

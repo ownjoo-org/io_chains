@@ -3,8 +3,6 @@ from typing import Any
 
 from linkables.subscriber import Subscriber
 
-END_OF_QUEUE: str = 'END_OF_QUEUE'
-
 
 class Linkable(ABC, Subscriber):
     @abstractmethod
