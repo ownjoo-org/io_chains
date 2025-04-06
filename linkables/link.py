@@ -78,17 +78,17 @@ class Link(Linkable):
                     else:
                         self._queue.put(next(self.input))
                 except StopIteration:
+                    self._queue.put(END_OF_QUEUE)
                     self._processing = False
 
     def push(self, value: Any) -> None:
-        if value is not END_OF_QUEUE:
-            if self._processor and isinstance(self._processor, Callable):
-                self._queue.put(self._processor(value))
-            else:
-                self._queue.put(value)
-            self._publish()
-        else:
+        if value is END_OF_QUEUE:
             self._processing = False
+        if self._processor and isinstance(self._processor, Callable):
+            self._queue.put(self._processor(value))
+        else:
+            self._queue.put(value)
+        self._publish()
 
     def __call__(self) -> None:
         while self._processing:
