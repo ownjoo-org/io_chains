@@ -13,17 +13,21 @@ def get_rick_and_morty() -> Generator[Response, None, None]:
 
 
 def main():
+    # prepare to show the headers
     headers_link = Link(
-        processor=lambda resp, *args, **kwargs: f'\n\n{resp.headers=}\n\n',
+        processor=lambda resp, *args, **kwargs: f'\n\n{resp.headers=}\n\n',  # extract what we need and publish
         subscribers=[
-            Subscriber(callback=lambda value: print(value)),
+            Subscriber(callback=lambda value: print(value)),  # print subscriber just so we can see some output
         ],
     )
+
+    # prepare to show the body
     json_link = Link(
         processor=lambda resp, *args, **kwargs: f'\n\n{resp.json()=}\n\n',
         subscribers=Subscriber(callback=lambda value: print(value)),
     )
 
+    # prepare to get some data and generate from the response (or just the whole response in this case)
     rick_and_morty_extractor: ExtractLink = ExtractLink(
         processor=get_rick_and_morty,
         subscribers=[
@@ -31,6 +35,8 @@ def main():
             json_link,
         ],
     )
+
+    # now that we've prepared the chain, make it go
     rick_and_morty_extractor()
 
 
