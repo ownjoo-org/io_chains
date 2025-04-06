@@ -10,7 +10,7 @@ class Link(Linkable):
     def __init__(
         self,
         *args,
-        in_iter: Iterable = None,
+        in_iter: Union[Callable, Iterable, None] = None,
         processor: Optional[Callable] = None,
         subscribers: Union[Iterable[Subscribable], None, Subscribable] = None,
         **kwargs
@@ -18,7 +18,8 @@ class Link(Linkable):
         self._input: Union[Callable, Iterator, None] = None
         self.input = in_iter
         self._queue: Queue = Queue(maxsize=100)
-        self._processor: Optional[Callable] = processor
+        self._processor: Optional[Callable] = None
+        self.processor = processor
         self._processing: bool = True
         self._subscribers: list = []
         self.subscribers = subscribers
