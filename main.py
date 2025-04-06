@@ -39,6 +39,7 @@ def main():
     # now that we've prepared the chain, make it go
     rick_and_morty_extractor()
 
+    # example starting with a list
     ExtractLink(
         in_iter=[0, 1, 2],
         subscribers=[
@@ -46,6 +47,7 @@ def main():
         ],
     )()
 
+    # example starting with a generator
     ExtractLink(
         in_iter=range(10),
         subscribers=[
