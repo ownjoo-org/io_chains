@@ -29,7 +29,7 @@ def main():
 
     # prepare to get some data and generate from the response (or just the whole response in this case)
     rick_and_morty_extractor: ExtractLink = ExtractLink(
-        processor=get_rick_and_morty,
+        in_iter=get_rick_and_morty,
         subscribers=[
             headers_link,
             json_link,
@@ -38,6 +38,20 @@ def main():
 
     # now that we've prepared the chain, make it go
     rick_and_morty_extractor()
+
+    ExtractLink(
+        in_iter=[0, 1, 2],
+        subscribers=[
+            Subscriber(callback=lambda value: print(f'LIST VAL: {value}')),
+        ],
+    )()
+
+    ExtractLink(
+        in_iter=range(10),
+        subscribers=[
+            Subscriber(callback=lambda value: print(f'GEN VAL: {value}')),
+        ],
+    )()
 
 
 if __name__ == '__main__':
