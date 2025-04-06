@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from linkables.subscriber import Subscriber
+from subscribables.subscribable import Subscribable
 
 
-class Linkable(ABC, Subscriber):
+class Linkable(ABC, Subscribable):
     @abstractmethod
     def input(self) -> Any:
         raise NotImplementedError
@@ -14,7 +14,7 @@ class Linkable(ABC, Subscriber):
         raise NotImplementedError
 
     @abstractmethod
-    def subscribers(self) -> list[Subscriber]:
+    def subscribers(self) -> list[Subscribable]:
         raise NotImplementedError
 
     @abstractmethod

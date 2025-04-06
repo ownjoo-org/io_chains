@@ -1,8 +1,10 @@
 from sys import stderr
 from typing import Any, Callable
 
+from subscribables.subscribable import Subscribable
 
-class Subscriber:
+
+class Subscriber(Subscribable):
     def __init__(self, callback: Callable):
         self._callback = callback
 

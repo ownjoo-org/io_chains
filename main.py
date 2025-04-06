@@ -4,7 +4,7 @@ from requests import Response, get
 
 from linkables.extract_link import ExtractLink
 from linkables.link import Link
-from linkables.subscriber import Subscriber
+from subscribables.subscriber import Subscriber
 
 
 def get_rick_and_morty() -> Generator[Response, None, None]:

@@ -3,7 +3,7 @@ from typing import Any, Callable, Iterable, Iterator, Optional, Union
 
 from linkables.consts import END_OF_QUEUE
 from linkables.linkable import Linkable
-from linkables.subscriber import Subscriber
+from subscribables.subscribable import Subscribable
 
 
 class Link(Linkable):
@@ -12,7 +12,7 @@ class Link(Linkable):
         *args,
         in_iter: Iterable = None,
         processor: Optional[Callable] = None,
-        subscribers: Union[Iterable[Subscriber], None, Subscriber] = None,
+        subscribers: Union[Iterable[Subscribable], None, Subscribable] = None,
         **kwargs
     ) -> None:
         self._input: Iterator = iter(in_iter) if in_iter else None
@@ -39,18 +39,18 @@ class Link(Linkable):
         self._processor = processor
 
     @property
-    def subscribers(self) -> list[Subscriber]:
+    def subscribers(self) -> list[Subscribable]:
         return self._subscribers
 
     @subscribers.setter
     def subscribers(
-        self, subscribers: Union[Iterable[Subscriber], None, Subscriber]
+        self, subscribers: Union[Iterable[Subscribable], None, Subscribable]
     ) -> None:
-        if isinstance(subscribers, Subscriber):
+        if isinstance(subscribers, Subscribable):
             self._subscribers.append(subscribers)
         elif isinstance(subscribers, Iterable):
             for subscriber in subscribers:
-                if isinstance(subscriber, Subscriber):
+                if isinstance(subscriber, Subscribable):
                     self._subscribers.append(subscriber)
 
     def _publish(self) -> None:
