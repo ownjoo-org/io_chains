@@ -43,7 +43,7 @@ def main():
     ExtractLink(
         in_iter=[0, 1, 2],
         subscribers=[
-            CallbackSubscriber(callback=lambda value: print(f'LIST VAL: {value}')),
+            lambda value: print(f'LIST VAL: {value}'),
         ],
     )()
 
