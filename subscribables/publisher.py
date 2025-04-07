@@ -30,7 +30,7 @@ class Publisher:
                 if isinstance(subscriber, Subscriber):
                     self._subscribers.append(subscriber)
         else:
-            raise TypeError('ERROR: subscribers must be a Subscriber or Iterable[Subscriber]')
+            raise TypeError('subscribers must be a Subscriber or Iterable[Subscriber]')
 
     def publish(self, message) -> None:
         for subscriber in self._subscribers:
