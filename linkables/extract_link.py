@@ -1,7 +1,6 @@
-from typing import Optional, Iterable, Callable
+from typing import Iterable, Optional
 
 from linkables.link import Link
-from subscribables.subscriber import Subscriber
 
 
 class ExtractLink(Link):
