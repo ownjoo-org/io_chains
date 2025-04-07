@@ -5,9 +5,8 @@ from linkables.link import Link
 
 class ExtractLink(Link):
     def _publish(self) -> None:
-        if self.subscribers:
-            for each in self.input:
-                self.publish(each)
+        for each in self.input:
+            self.publish(each)
 
     def __call__(self) -> Optional[Iterable]:
         """
