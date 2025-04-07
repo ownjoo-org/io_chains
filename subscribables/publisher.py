@@ -1,5 +1,7 @@
 from typing import Iterable, Union, Callable
 
+from subscribables.subscriber import Subscriber
+
 
 class Publisher:
     def __init__(
@@ -32,4 +34,9 @@ class Publisher:
 
     def publish(self, message) -> None:
         for subscriber in self._subscribers:
-            subscriber(message)
+            if isinstance(subscriber, Subscriber):
+                subscriber.push(message)
+            elif isinstance(subscriber, Callable):
+                subscriber(message)
+            else:
+                raise TypeError('subscriber must be Callable')

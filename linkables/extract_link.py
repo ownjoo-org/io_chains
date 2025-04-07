@@ -1,14 +1,18 @@
-from typing import Optional, Iterable
+from typing import Optional, Iterable, Callable
 
 from linkables.link import Link
+from subscribables.subscriber import Subscriber
 
 
 class ExtractLink(Link):
     def _publish(self) -> None:
-        if self._subscribers:
+        if self.subscribers:
             for each in self.input:
-                for subscriber in self._subscribers:
-                    subscriber.push(each)
+                for subscriber in self.subscribers:
+                    if isinstance(subscriber, Subscriber):
+                        subscriber.push(message=each)
+                    elif isinstance(subscriber, Callable):
+                        subscriber(each)
 
     def __call__(self) -> Optional[Iterable]:
         """
@@ -16,7 +20,7 @@ class ExtractLink(Link):
         Processor must be a Generator.
         :return: Optional[Generator, None, None]
         """
-        if self._subscribers:
+        if self.subscribers:
             self._publish()
         else:
             return self.input

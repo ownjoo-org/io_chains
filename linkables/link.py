@@ -66,13 +66,13 @@ class Link(Linkable, Publisher, Subscriber):
             message = self._queue.get()
             self.publish(message)
 
-    def push(self, value: Any) -> None:
-        if value is END_OF_QUEUE:
+    def push(self, message: Any) -> None:
+        if message is END_OF_QUEUE:
             self._processing = False
         if self._processor and isinstance(self._processor, Callable):
-            self._queue.put(self._processor(value))
+            self._queue.put(self._processor(message))
         else:
-            self._queue.put(value)
+            self._queue.put(message)
         self._publish()
 
     def __call__(self) -> None:
