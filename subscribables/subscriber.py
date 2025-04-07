@@ -6,3 +6,6 @@ class Subscriber:
     @abstractmethod
     def push(self, value: Any) -> None:
         raise NotImplementedError
+
+    def __call__(self, value: Any) -> None:
+        self.push(value)
