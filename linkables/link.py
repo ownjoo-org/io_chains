@@ -61,7 +61,7 @@ class Link(Linkable, Publisher, Subscriber):
                     self._queue.put(END_OF_QUEUE)
                     self._processing = False
 
-    def _publish(self) -> None:
+    def _update_subscribers(self) -> None:
         while not self._queue.empty():
             message = self._queue.get()
             self.publish(message)
@@ -73,9 +73,9 @@ class Link(Linkable, Publisher, Subscriber):
             self._queue.put(self._processor(message))
         else:
             self._queue.put(message)
-        self._publish()
+        self._update_subscribers()
 
     def __call__(self) -> None:
         while self._processing:
             self._fill_queue_from_input()
-            self._publish()
+            self._update_subscribers()

@@ -4,7 +4,7 @@ from linkables.link import Link
 
 
 class ExtractLink(Link):
-    def _publish(self) -> None:
+    def _update_subscribers(self) -> None:
         for each in self.input:
             self.publish(each)
 
@@ -14,6 +14,6 @@ class ExtractLink(Link):
         :return: Optional[Generator, None, None]
         """
         if self.subscribers:
-            self._publish()
+            self._update_subscribers()
         else:
             return self.input
