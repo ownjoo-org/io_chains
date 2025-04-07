@@ -8,11 +8,7 @@ class ExtractLink(Link):
     def _publish(self) -> None:
         if self.subscribers:
             for each in self.input:
-                for subscriber in self.subscribers:
-                    if isinstance(subscriber, Subscriber):
-                        subscriber.push(message=each)
-                    elif isinstance(subscriber, Callable):
-                        subscriber(each)
+                self.publish(each)
 
     def __call__(self) -> Optional[Iterable]:
         """
