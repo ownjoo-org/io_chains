@@ -4,7 +4,7 @@ from requests import Response, get
 
 from linkables.extract_link import ExtractLink
 from linkables.link import Link
-from subscribables.subscriber import Subscriber
+from subscribables.callbacksubscriber import CallbackSubscriber
 
 
 def get_rick_and_morty() -> Generator[Response, None, None]:
@@ -17,14 +17,14 @@ def main():
     headers_link = Link(
         processor=lambda resp, *args, **kwargs: f'\n\n{resp.headers=}\n\n',  # extract what we need and publish
         subscribers=[
-            Subscriber(callback=lambda value: print(value)),  # print subscriber just so we can see some output
+            CallbackSubscriber(callback=lambda value: print(value)),  # print subscriber just so we can see some output
         ],
     )
 
     # prepare to show the body
     json_link = Link(
         processor=lambda resp, *args, **kwargs: f'\n\n{resp.json()=}\n\n',
-        subscribers=Subscriber(callback=lambda value: print(value)),
+        subscribers=CallbackSubscriber(callback=lambda value: print(value)),
     )
 
     # prepare to get some data and generate from the response (or just the whole response in this case)
@@ -43,7 +43,7 @@ def main():
     ExtractLink(
         in_iter=[0, 1, 2],
         subscribers=[
-            Subscriber(callback=lambda value: print(f'LIST VAL: {value}')),
+            CallbackSubscriber(callback=lambda value: print(f'LIST VAL: {value}')),
         ],
     )()
 
@@ -51,7 +51,7 @@ def main():
     ExtractLink(
         in_iter=range(10),
         subscribers=[
-            Subscriber(callback=lambda value: print(f'GEN VAL: {value}')),
+            CallbackSubscriber(callback=lambda value: print(f'GEN VAL: {value}')),
         ],
     )()
 

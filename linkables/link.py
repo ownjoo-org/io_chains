@@ -1,28 +1,25 @@
-from queue import Queue
 from typing import Any, Callable, Iterable, Iterator, Optional, Union
 
-from linkables.consts import END_OF_QUEUE
 from linkables.linkable import Linkable
-from subscribables.subscribable import Subscribable
+from subscribables.consts import END_OF_QUEUE
+from subscribables.publisher import Publisher
+from subscribables.subscriber import Subscriber
 
 
-class Link(Linkable):
+class Link(Linkable, Publisher, Subscriber):
     def __init__(
         self,
         *args,
         in_iter: Union[Callable, Iterable, None] = None,
         processor: Optional[Callable] = None,
-        subscribers: Union[Iterable[Subscribable], None, Subscribable] = None,
         **kwargs
     ) -> None:
+        super().__init__(*args, **kwargs)
         self._input: Union[Callable, Iterator, None] = None
         self.input = in_iter
-        self._queue: Queue = Queue(maxsize=100)
         self._processor: Optional[Callable] = None
         self.processor = processor
         self._processing: bool = True
-        self._subscribers: list = []
-        self.subscribers = subscribers
 
     @property
     def input(self) -> Any:
@@ -45,27 +42,6 @@ class Link(Linkable):
     @processor.setter
     def processor(self, processor: Optional[Iterable] = None) -> None:
         self._processor = processor
-
-    @property
-    def subscribers(self) -> list[Subscribable]:
-        return self._subscribers
-
-    @subscribers.setter
-    def subscribers(
-        self, subscribers: Union[Iterable[Subscribable], None, Subscribable]
-    ) -> None:
-        if isinstance(subscribers, Subscribable):
-            self._subscribers.append(subscribers)
-        elif isinstance(subscribers, Iterable):
-            for subscriber in subscribers:
-                if isinstance(subscriber, Subscribable):
-                    self._subscribers.append(subscriber)
-
-    def _publish(self) -> None:
-        while self._subscribers and not self._queue.empty():
-            message = self._queue.get()
-            for subscriber in self._subscribers:
-                subscriber.push(message)
 
     def _fill_queue_from_input(self) -> None:
         if self.input:
