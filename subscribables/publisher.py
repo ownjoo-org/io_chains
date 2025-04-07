@@ -21,12 +21,16 @@ class Publisher:
     def subscribers(
         self, subscribers: Union[Iterable[Subscriber], None, Subscriber]
     ) -> None:
-        if isinstance(subscribers, Subscriber):
+        if subscribers is None:
+            return
+        elif isinstance(subscribers, Subscriber):
             self._subscribers.append(subscribers)
         elif isinstance(subscribers, Iterable):
             for subscriber in subscribers:
                 if isinstance(subscriber, Subscriber):
                     self._subscribers.append(subscriber)
+        else:
+            raise TypeError('ERROR: subscribers must be a Subscriber or Iterable[Subscriber]')
 
     def publish(self, message) -> None:
         for subscriber in self._subscribers:
