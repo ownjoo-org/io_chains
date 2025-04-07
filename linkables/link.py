@@ -2,7 +2,7 @@ from queue import Queue
 from typing import Any, Callable, Iterable, Optional, Union
 
 from linkables.linkable import Linkable
-from subscribables.consts import END_OF_QUEUE, MAX_QUEUE_SIZE
+from subscribables.consts import MAX_QUEUE_SIZE
 from subscribables.publisher import Publisher
 from subscribables.subscriber import Subscriber
 
@@ -49,17 +49,14 @@ class Link(Linkable, Publisher, Subscriber):
 
     def _fill_queue_from_input(self) -> None:
         if self.input:
-            while self._processing and not self._queue.full():
+            while not self._queue.full():
                 try:
-                    if self._processor and isinstance(
-                        self._processor, Callable
-                    ):
+                    if self._processor and isinstance(self._processor, Callable):
                         self._queue.put(self._processor(next(self.input)))
                     else:
                         self._queue.put(next(self.input))
                 except StopIteration:
-                    self._queue.put(END_OF_QUEUE)
-                    self._processing = False
+                    raise
 
     def _update_subscribers(self) -> None:
         while not self._queue.empty():
@@ -67,8 +64,6 @@ class Link(Linkable, Publisher, Subscriber):
             self.publish(message)
 
     def push(self, message: Any) -> None:
-        if message is END_OF_QUEUE:
-            self._processing = False
         if self._processor and isinstance(self._processor, Callable):
             self._queue.put(self._processor(message))
         else:
@@ -76,6 +71,11 @@ class Link(Linkable, Publisher, Subscriber):
         self._update_subscribers()
 
     def __call__(self) -> None:
-        while self._processing:
-            self._fill_queue_from_input()
-            self._update_subscribers()
+        # TODO: This is wrong. ExtractLink's functionality can be absorbed into this, yes?
+        while True:
+            try:
+                self._fill_queue_from_input()
+            except Exception:
+                break
+            finally:
+                self._update_subscribers()

@@ -1,2 +1,1 @@
-END_OF_QUEUE: str = 'END_OF_QUEUE'
 MAX_QUEUE_SIZE: int = 100
