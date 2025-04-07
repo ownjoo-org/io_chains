@@ -1,11 +1,11 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Any
 
 from subscribables.publisher import Publisher
 from subscribables.subscriber import Subscriber
 
 
-class Linkable(ABC, Publisher, Subscriber):
+class Linkable(Publisher, Subscriber):
     @abstractmethod
     def input(self) -> Any:
         raise NotImplementedError

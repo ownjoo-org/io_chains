@@ -1,8 +1,8 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Any
 
 
-class Subscriber(ABC):
+class Subscriber:
     @abstractmethod
     def push(self, value: Any) -> None:
         raise NotImplementedError

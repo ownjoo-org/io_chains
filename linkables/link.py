@@ -1,7 +1,8 @@
-from typing import Any, Callable, Iterable, Iterator, Optional, Union
+from queue import Queue
+from typing import Any, Callable, Iterable, Optional, Union
 
 from linkables.linkable import Linkable
-from subscribables.consts import END_OF_QUEUE
+from subscribables.consts import END_OF_QUEUE, MAX_QUEUE_SIZE
 from subscribables.publisher import Publisher
 from subscribables.subscriber import Subscriber
 
@@ -15,11 +16,14 @@ class Link(Linkable, Publisher, Subscriber):
         **kwargs
     ) -> None:
         super().__init__(*args, **kwargs)
-        self._input: Union[Callable, Iterator, None] = None
+        self._input: Union[Callable, Iterable, None] = None
         self.input = in_iter
+
         self._processor: Optional[Callable] = None
         self.processor = processor
         self._processing: bool = True
+
+        self._queue: Queue = Queue(maxsize=MAX_QUEUE_SIZE)
 
     @property
     def input(self) -> Any:
@@ -56,6 +60,11 @@ class Link(Linkable, Publisher, Subscriber):
                 except StopIteration:
                     self._queue.put(END_OF_QUEUE)
                     self._processing = False
+
+    def _publish(self) -> None:
+        while not self._queue.empty():
+            message = self._queue.get()
+            self.publish(message)
 
     def push(self, value: Any) -> None:
         if value is END_OF_QUEUE:
