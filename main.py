@@ -1,60 +1,77 @@
-from typing import Generator
+from asyncio import run
+from logging import getLogger
+from typing import AsyncGenerator
 
-from requests import Response, get
-
+from aiohttp import ClientResponse, ClientSession
+from httpx import Response
 from io_chains.linkables.extract_link import ExtractLink
 from io_chains.linkables.link import Link
 from io_chains.subscribables.callbacksubscriber import CallbackSubscriber
 
-
-def get_rick_and_morty() -> Generator[Response, None, None]:
-    response: Response = get(url='https://rickandmortyapi.com/api/')
-    yield response
+logger = getLogger(__name__)
 
 
-def main():
-    # prepare to show the headers
-    headers_link = Link(
-        processor=lambda resp, *args, **kwargs: f'\n\n{resp.headers=}\n\n',  # extract what we need and publish
-        subscribers=[
-            CallbackSubscriber(callback=lambda value: print(value)),  # print subscriber just so we can see some output
-        ],
-    )
+async def get_rick_and_morty() -> AsyncGenerator[Response, None]:
+    try:
+        async with ClientSession() as session:
+            response: ClientResponse = await session.get(url='https://rickandmortyapi.com/api/')
+            yield response
+    except Exception as e:
+        logger.exception(f'get_rick_and_morty: {e}')
 
-    # prepare to show the body
-    json_link = Link(
-        processor=lambda resp, *args, **kwargs: f'\n\n{resp.json()=}\n\n',
-        subscribers=CallbackSubscriber(callback=lambda value: print(value)),
-    )
 
-    # prepare to get some data and generate from the response (or just the whole response in this case)
-    rick_and_morty_extractor: ExtractLink = ExtractLink(
-        in_iter=get_rick_and_morty,
-        subscribers=[
-            headers_link,
-            json_link,
-        ],
-    )
+async def get_json(resp, *args, **kwargs):
+    logger.info(f'GET JSON RESPONSE: {resp}')
+    data = await resp.json()
+    return f'\n\n{data}\n\n'
 
-    # now that we've prepared the chain, make it go
-    rick_and_morty_extractor()
 
-    # example starting with a list
-    ExtractLink(
-        in_iter=[0, 1, 2],
-        subscribers=[
-            lambda value: print(f'LIST VAL: {value}'),
-        ],
-    )()
+async def main():
+    try:
+        # prepare to show the headers
+        headers_link = Link(
+            processor=lambda resp, *args, **kwargs: f'HEADERS LINK SUB:\n{resp.headers}\n\n',  # extract what we need and publish
+            subscribers=[
+                CallbackSubscriber(callback=lambda value: print(value))  # print just so we can see some output
+            ],
+        )
 
-    # example starting with a generator
-    ExtractLink(
-        in_iter=range(10),
-        subscribers=[
-            CallbackSubscriber(callback=lambda value: print(f'GEN VAL: {value}')),
-        ],
-    )()
+        # prepare to show the body
+        json_link = Link(
+            processor=get_json,
+            subscribers=CallbackSubscriber(callback=lambda value: print(f'JSON LINK SUB: {value}')),
+        )
+
+        # prepare to get some data and generate from the response (or just the whole response in this case)
+        rick_and_morty_extractor: ExtractLink = ExtractLink(
+            in_iter=get_rick_and_morty,
+            subscribers=[
+                headers_link,
+                json_link,
+            ],
+        )
+
+        # now that we've prepared the chain, make it go
+        await rick_and_morty_extractor()
+
+        # example starting with a list
+        await ExtractLink(
+            in_iter=[0, 1, 2],
+            subscribers=[
+                lambda value: print(f'LIST VAL: {value}'),
+            ],
+        )()
+
+        # example starting with a generator
+        await ExtractLink(
+            in_iter=range(10),
+            subscribers=[
+                CallbackSubscriber(callback=lambda value: print(f'GEN VAL: {value}')),
+            ],
+        )()
+    except Exception as e:
+        logger.exception(f'main: {e}')
 
 
 if __name__ == '__main__':
-    main()
+    run(main())

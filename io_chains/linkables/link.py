@@ -1,3 +1,5 @@
+from asyncio import iscoroutinefunction
+from logging import getLogger
 from queue import Queue
 from typing import Any, Callable, Iterable, Optional, Union
 
@@ -5,6 +7,8 @@ from io_chains.linkables.linkable import Linkable
 from io_chains.subscribables.consts import MAX_QUEUE_SIZE
 from io_chains.subscribables.publisher import Publisher
 from io_chains.subscribables.subscriber import Subscriber
+
+logger = getLogger(__name__)
 
 
 class Link(Linkable, Publisher, Subscriber):
@@ -44,38 +48,43 @@ class Link(Linkable, Publisher, Subscriber):
         return self._processor
 
     @processor.setter
-    def processor(self, processor: Optional[Iterable] = None) -> None:
+    def processor(self, processor: Optional[Callable] = None) -> None:
         self._processor = processor
 
-    def _fill_queue_from_input(self) -> None:
+    async def _fill_queue_from_input(self) -> None:
         if self.input:
             while not self._queue.full():
                 try:
-                    if self._processor and isinstance(self._processor, Callable):
-                        self._queue.put(self._processor(next(self.input)))
-                    else:
-                        self._queue.put(next(self.input))
+                    next_item = next(self.input)
+                    if self.processor and isinstance(self.processor, Callable):
+                        if iscoroutinefunction(self.processor):
+                            next_item = await self.processor(next_item)
+                        else:
+                            next_item = self.processor(next_item)
+                    self._queue.put(next_item)
                 except StopIteration:
                     raise
 
-    def _update_subscribers(self) -> None:
+    async def _update_subscribers(self) -> None:
         while not self._queue.empty():
             message = self._queue.get()
-            self.publish(message)
+            await self.publish(message)
 
-    def push(self, message: Any) -> None:
+    async def push(self, message: Any) -> None:
         if self._processor and isinstance(self._processor, Callable):
-            self._queue.put(self._processor(message))
-        else:
-            self._queue.put(message)
-        self._update_subscribers()
+            if iscoroutinefunction(self.processor):
+                message = await self.processor(message)
+            else:
+                message = self.processor(message)
+        self._queue.put(message)
+        await self._update_subscribers()
 
-    def __call__(self) -> None:
+    async def __call__(self) -> None:
         # TODO: This is wrong. ExtractLink's functionality can be absorbed into this, yes?
         while True:
             try:
-                self._fill_queue_from_input()
+                await self._fill_queue_from_input()
             except Exception:
                 break
             finally:
-                self._update_subscribers()
+                await self._update_subscribers()

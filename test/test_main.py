@@ -1,4 +1,5 @@
 import unittest
+from asyncio import run
 
 from main import main
 
@@ -8,7 +9,7 @@ class TestIOChainMain(unittest.TestCase):
         # setup
 
         # execute
-        actual = main()
+        actual = run(main())
 
         # assess
         self.assertTrue(True)

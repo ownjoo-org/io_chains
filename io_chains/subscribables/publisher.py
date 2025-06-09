@@ -32,10 +32,12 @@ class Publisher:
         else:
             raise TypeError('subscribers must be a Subscriber or Iterable[Subscriber]')
 
-    def publish(self, message) -> None:
+    async def publish(self, message) -> None:
+        if not message:
+            return
         for subscriber in self._subscribers:
             if isinstance(subscriber, Subscriber):
-                subscriber.push(message)
+                await subscriber.push(message)
             elif isinstance(subscriber, Callable):
                 subscriber(message)
             else:

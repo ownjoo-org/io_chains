@@ -4,8 +4,8 @@ from typing import Any
 
 class Subscriber:
     @abstractmethod
-    def push(self, message: Any) -> None:
+    async def push(self, message: Any) -> None:
         raise NotImplementedError
 
-    def __call__(self, value: Any) -> None:
-        self.push(message=value)
+    async def __call__(self, value: Any) -> None:
+        await self.push(message=value)
