@@ -2,9 +2,9 @@ from typing import Generator
 
 from requests import Response, get
 
-from linkables.extract_link import ExtractLink
-from linkables.link import Link
-from subscribables.callbacksubscriber import CallbackSubscriber
+from io_chains.linkables.extract_link import ExtractLink
+from io_chains.linkables.link import Link
+from io_chains.subscribables.callbacksubscriber import CallbackSubscriber
 
 
 def get_rick_and_morty() -> Generator[Response, None, None]:

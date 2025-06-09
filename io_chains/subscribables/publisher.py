@@ -1,6 +1,6 @@
 from typing import Iterable, Union, Callable
 
-from subscribables.subscriber import Subscriber
+from io_chains.subscribables.subscriber import Subscriber
 
 
 class Publisher:

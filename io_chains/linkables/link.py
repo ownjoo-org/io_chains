@@ -1,10 +1,10 @@
 from queue import Queue
 from typing import Any, Callable, Iterable, Optional, Union
 
-from linkables.linkable import Linkable
-from subscribables.consts import MAX_QUEUE_SIZE
-from subscribables.publisher import Publisher
-from subscribables.subscriber import Subscriber
+from io_chains.linkables.linkable import Linkable
+from io_chains.subscribables.consts import MAX_QUEUE_SIZE
+from io_chains.subscribables.publisher import Publisher
+from io_chains.subscribables.subscriber import Subscriber
 
 
 class Link(Linkable, Publisher, Subscriber):

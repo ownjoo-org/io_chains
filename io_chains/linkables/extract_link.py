@@ -1,6 +1,6 @@
 from typing import Iterable, Optional
 
-from linkables.link import Link
+from io_chains.linkables.link import Link
 
 
 class ExtractLink(Link):
