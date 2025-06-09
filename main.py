@@ -26,11 +26,11 @@ async def get_json(resp, *args, **kwargs):
     return f'\n\n{data}\n\n'
 
 
-async def main():
+def main():
     try:
         # prepare to show the headers
         headers_link = Link(
-            processor=lambda resp, *args, **kwargs: f'HEADERS LINK SUB:\n{resp.headers}\n\n',  # extract what we need and publish
+            processor=lambda resp, *args, **kwargs: f'HEADERS LINK SUB:\n{resp.headers}\n\n',
             subscribers=[
                 CallbackSubscriber(callback=lambda value: print(value))  # print just so we can see some output
             ],
@@ -52,26 +52,30 @@ async def main():
         )
 
         # now that we've prepared the chain, make it go
-        await rick_and_morty_extractor()
+        run(rick_and_morty_extractor())
 
         # example starting with a list
-        await ExtractLink(
-            in_iter=[0, 1, 2],
-            subscribers=[
-                lambda value: print(f'LIST VAL: {value}'),
-            ],
-        )()
+        run(
+            ExtractLink(
+                in_iter=[0, 1, 2],
+                subscribers=[
+                    lambda value: print(f'LIST VAL: {value}'),
+                ],
+            )()
+        )
 
         # example starting with a generator
-        await ExtractLink(
-            in_iter=range(10),
-            subscribers=[
-                CallbackSubscriber(callback=lambda value: print(f'GEN VAL: {value}')),
-            ],
-        )()
+        run(
+            ExtractLink(
+                in_iter=range(10),
+                subscribers=[
+                    CallbackSubscriber(callback=lambda value: print(f'GEN VAL: {value}')),
+                ],
+            )()
+        )
     except Exception as e:
         logger.exception(f'main: {e}')
 
 
 if __name__ == '__main__':
-    run(main())
+    main()
