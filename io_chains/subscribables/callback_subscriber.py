@@ -10,8 +10,8 @@ class CallbackSubscriber(Subscriber):
     def __init__(self, callback: Callable):
         self._callback = callback
 
-    async def push(self, message: Any) -> None:
+    def push(self, datum: Any) -> Any:
         try:
-            self._callback(message)
+            return self._callback(datum)
         except Exception as e:
             logger.exception(f"CallbackSubscriber.push: {self._callback}: {e}")

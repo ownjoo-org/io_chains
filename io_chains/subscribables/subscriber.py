@@ -1,11 +1,8 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from typing import Any
 
 
-class Subscriber:
+class Subscriber(ABC):
     @abstractmethod
-    async def push(self, message: Any) -> None:
-        raise NotImplementedError
-
-    async def __call__(self, value: Any) -> None:
-        await self.push(message=value)
+    async def push(self, datum: Any) -> Any:
+        pass

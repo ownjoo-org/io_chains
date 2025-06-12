@@ -1,9 +1,10 @@
-from typing import Iterable, Union, Callable
+from abc import ABC
+from typing import Callable, Iterable, Union, Any
 
 from io_chains.subscribables.subscriber import Subscriber
 
 
-class Publisher:
+class Publisher(ABC):
     def __init__(
         self,
         *args,
@@ -14,31 +15,28 @@ class Publisher:
         self.subscribers = subscribers
 
     @property
-    def subscribers(self) -> list[Callable]:
+    def subscribers(self) -> list[Callable | Subscriber]:
         return self._subscribers
 
     @subscribers.setter
-    def subscribers(
-        self, subscribers: Union[Iterable[Callable], None, Callable]
-    ) -> None:
-        if subscribers is None:
+    def subscribers(self, subscribers: Union[Iterable[Callable], None, Callable]) -> None:
+        if not subscribers:
             return
-        elif isinstance(subscribers, Callable):
+        print(f'SUBSCRIBERS: {type(subscribers)=}')
+        if isinstance(subscribers, (Callable, Subscriber)):
             self._subscribers.append(subscribers)
         elif isinstance(subscribers, Iterable):
             for subscriber in subscribers:
-                if isinstance(subscriber, Callable):
+                if isinstance(subscriber, (Callable, Subscriber)):
                     self._subscribers.append(subscriber)
         else:
             raise TypeError('subscribers must be a Subscriber or Iterable[Subscriber]')
 
-    async def publish(self, message) -> None:
-        if not message:
-            return
-        for subscriber in self._subscribers:
+    async def publish(self, datum) -> Any:
+        for subscriber in self.subscribers:
             if isinstance(subscriber, Subscriber):
-                await subscriber.push(message)
+                return await subscriber.push(datum),
             elif isinstance(subscriber, Callable):
-                subscriber(message)
+                return subscriber(datum),
             else:
-                raise TypeError('subscriber must be Callable')
+                raise TypeError('subscriber must be directly Callable or Subscriber')

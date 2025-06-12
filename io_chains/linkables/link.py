@@ -1,90 +1,94 @@
-from asyncio import iscoroutinefunction
+from asyncio import Queue, Task, create_task, gather, iscoroutinefunction
+from inspect import isfunction
 from logging import getLogger
-from queue import Queue
-from typing import Any, Callable, Iterable, Optional, Union
+from typing import Any, AsyncGenerator, AsyncIterable, Callable, Iterable, Optional, Union
 
 from io_chains.linkables.linkable import Linkable
-from io_chains.subscribables.consts import MAX_QUEUE_SIZE
-from io_chains.subscribables.publisher import Publisher
-from io_chains.subscribables.subscriber import Subscriber
 
 logger = getLogger(__name__)
 
 
-class Link(Linkable, Publisher, Subscriber):
+class Link(Linkable):
     def __init__(
         self,
         *args,
         in_iter: Union[Callable, Iterable, None] = None,
-        processor: Optional[Callable] = None,
+        transformer: Optional[Callable] = None,
+        queue: Optional[Queue] = None,
         **kwargs
     ) -> None:
         super().__init__(*args, **kwargs)
-        self._input: Union[Callable, Iterable, None] = None
+        self._input: Union[AsyncIterable, Callable, Iterable, None] = None
         self.input = in_iter
 
-        self._processor: Optional[Callable] = None
-        self.processor = processor
-        self._processing: bool = True
+        self._transformer: Optional[Callable] = None
+        self.transformer = transformer
+        self._transforming: bool = True
 
-        self._queue: Queue = Queue(maxsize=MAX_QUEUE_SIZE)
+        self._queue: Queue = queue or Queue()
 
     @property
-    def input(self) -> Any:
-        if isinstance(self._input, Callable):
-            return self._input()
-        else:
-            return self._input
+    async def input(self) -> AsyncGenerator:
+        print(f'INPUT: {type(self._input)=}')
+        if self._input:
+            if hasattr(self._input, '__aiter__'):
+                async for each in self._input:
+                    yield each
+            elif isfunction(self._input):
+                print(f'INPUT: {type(self._input)=}')
+                async for each in self._input():
+                    yield each
+            else:
+                for each in self._input:
+                    yield each
 
     @input.setter
-    def input(self, in_obj: Union[Callable, Iterable, None] = None) -> None:
+    def input(self, in_obj: Union[AsyncIterable, Callable, Iterable, None] = None) -> None:
         if in_obj:
-            if not isinstance(in_obj, (Callable, Iterable)):
+            if not isinstance(in_obj, (AsyncIterable, Callable, Iterable)):
                 raise TypeError(f'in_iter must be Callable or Iterable, got {type(in_obj)}')
         self._input = in_obj
 
     @property
-    def processor(self) -> Any:
-        return self._processor
+    def transformer(self) -> Any:
+        return self._transformer
 
-    @processor.setter
-    def processor(self, processor: Optional[Callable] = None) -> None:
-        self._processor = processor
+    @transformer.setter
+    def transformer(self, transformer: Optional[Callable] = None) -> None:
+        self._transformer = transformer
 
     async def _fill_queue_from_input(self) -> None:
         if self.input:
-            while not self._queue.full():
-                try:
-                    next_item = next(self.input)
-                    if self.processor and isinstance(self.processor, Callable):
-                        if iscoroutinefunction(self.processor):
-                            next_item = await self.processor(next_item)
-                        else:
-                            next_item = self.processor(next_item)
-                    self._queue.put(next_item)
-                except StopIteration:
-                    raise
+            try:
+                async for datum in self.input:
+                    await self.push(datum)
+                await self.push(None)
+            except (StopIteration, StopAsyncIteration) as exc_stop:
+                logger.warning(f'STOPPING FILL FROM INPUT: {exc_stop}')
+                raise
 
     async def _update_subscribers(self) -> None:
-        while not self._queue.empty():
-            message = self._queue.get()
-            await self.publish(message)
+        should_continue: bool = True
+        while should_continue:
+            datum: Any = await self._queue.get()
+            await self.publish(datum)
+            should_continue = datum is not None
 
-    async def push(self, message: Any) -> None:
-        if self._processor and isinstance(self._processor, Callable):
-            if iscoroutinefunction(self.processor):
-                message = await self.processor(message)
-            else:
-                message = self.processor(message)
-        self._queue.put(message)
-        await self._update_subscribers()
+    async def push(self, datum: Any) -> None:
+        if self._transformer and isinstance(self._transformer, Callable):
+            if datum is not None:
+                if iscoroutinefunction(self.transformer):
+                    datum = await self.transformer(datum)
+                else:
+                    datum = self.transformer(datum)
+        self._queue.put_nowait(datum)
 
-    async def __call__(self) -> None:
-        # TODO: This is wrong. ExtractLink's functionality can be absorbed into this, yes?
-        while True:
-            try:
-                await self._fill_queue_from_input()
-            except Exception:
-                break
-            finally:
-                await self._update_subscribers()
+    async def run(self) -> None:
+        tasks: list[Task] = [
+            create_task(self._fill_queue_from_input()),
+            create_task(self._update_subscribers()),
+        ]
+        await gather(*tasks)
+
+    async def __call__(self) -> Optional[tuple]:
+        return await self.run()

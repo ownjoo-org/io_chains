@@ -1,20 +1,20 @@
-from asyncio import run
+import unittest
+from collections.abc import AsyncGenerator
 from logging import getLogger
-from typing import AsyncGenerator
 
 from aiohttp import ClientResponse, ClientSession
 from httpx import Response
-from io_chains.linkables.extract_link import ExtractLink
 from io_chains.linkables.link import Link
-from io_chains.subscribables.callbacksubscriber import CallbackSubscriber
+from io_chains.subscribables.callback_subscriber import CallbackSubscriber
 
-logger = getLogger(__name__)
+logger = getLogger()
 
 
 async def get_rick_and_morty() -> AsyncGenerator[Response, None]:
     try:
         async with ClientSession() as session:
             response: ClientResponse = await session.get(url='https://rickandmortyapi.com/api/')
+            print(f'rick & morty: {response=}')
             yield response
     except Exception as e:
         logger.exception(f'get_rick_and_morty: {e}')
@@ -26,11 +26,12 @@ async def get_json(resp, *args, **kwargs):
     return f'\n\n{data}\n\n'
 
 
-def main():
-    try:
+class TestLink(unittest.IsolatedAsyncioTestCase):
+    async def test_link_should_extract_rick_and_morty(self):
+        # setup
         # prepare to show the headers
         headers_link = Link(
-            processor=lambda resp, *args, **kwargs: f'HEADERS LINK SUB:\n{resp.headers}\n\n',
+            transformer=lambda resp, *args, **kwargs: f'HEADERS LINK SUB:\n{resp.headers}\n\n',
             subscribers=[
                 CallbackSubscriber(callback=lambda value: print(value))  # print just so we can see some output
             ],
@@ -38,12 +39,12 @@ def main():
 
         # prepare to show the body
         json_link = Link(
-            processor=get_json,
+            transformer=get_json,
             subscribers=CallbackSubscriber(callback=lambda value: print(f'JSON LINK SUB: {value}')),
         )
 
         # prepare to get some data and generate from the response (or just the whole response in this case)
-        rick_and_morty_extractor: ExtractLink = ExtractLink(
+        rick_and_morty_extractor: Link = Link(
             in_iter=get_rick_and_morty,
             subscribers=[
                 headers_link,
@@ -51,31 +52,15 @@ def main():
             ],
         )
 
-        # now that we've prepared the chain, make it go
-        run(rick_and_morty_extractor())
+        # execute
+        actual = await rick_and_morty_extractor()
 
-        # example starting with a list
-        run(
-            ExtractLink(
-                in_iter=[0, 1, 2],
-                subscribers=[
-                    lambda value: print(f'LIST VAL: {value}'),
-                ],
-            )()
-        )
+        # assess
+        self.assertIsInstance(rick_and_morty_extractor, Link)
+        # self.assertIsInstance(actual, AsyncGenerator)
 
-        # example starting with a generator
-        run(
-            ExtractLink(
-                in_iter=range(10),
-                subscribers=[
-                    CallbackSubscriber(callback=lambda value: print(f'GEN VAL: {value}')),
-                ],
-            )()
-        )
-    except Exception as e:
-        logger.exception(f'main: {e}')
+        # teardown
 
 
 if __name__ == '__main__':
-    main()
+    unittest.main()
