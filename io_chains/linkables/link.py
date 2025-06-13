@@ -29,13 +29,11 @@ class Link(Linkable):
 
     @property
     async def input(self) -> AsyncGenerator:
-        print(f'INPUT: {type(self._input)=}')
         if self._input:
             if hasattr(self._input, '__aiter__'):
                 async for each in self._input:
                     yield each
             elif isfunction(self._input):
-                print(f'INPUT: {type(self._input)=}')
                 async for each in self._input():
                     yield each
             else:

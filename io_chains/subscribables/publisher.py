@@ -22,7 +22,6 @@ class Publisher(ABC):
     def subscribers(self, subscribers: Union[Iterable[Callable], None, Callable]) -> None:
         if not subscribers:
             return
-        print(f'SUBSCRIBERS: {type(subscribers)=}')
         if isinstance(subscribers, (Callable, Subscriber)):
             self._subscribers.append(subscribers)
         elif isinstance(subscribers, Iterable):
