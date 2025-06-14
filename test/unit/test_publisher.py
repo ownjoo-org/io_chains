@@ -40,7 +40,7 @@ class TestPublisher(unittest.IsolatedAsyncioTestCase):
         await publisher.publish('something')
         await publisher.publish(None)
         actual = None
-        async for each in gen_subscriber.out():
+        async for each in gen_subscriber.a_out():
             actual = each
 
         # assess

@@ -34,7 +34,7 @@ class Publisher(ABC):
     async def publish(self, datum) -> Any:
         for subscriber in self.subscribers:
             if isinstance(subscriber, Subscriber):
-                return await subscriber.push(datum),
+                return subscriber.push(datum),
             elif isinstance(subscriber, Callable):
                 return subscriber(datum),
             else:

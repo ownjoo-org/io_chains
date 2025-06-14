@@ -59,8 +59,8 @@ class Link(Linkable):
         if self.input:
             try:
                 async for datum in self.input:
-                    await self.push(datum)
-                await self.push(None)
+                    self.push(datum)
+                self.push(None)
             except (StopIteration, StopAsyncIteration) as exc_stop:
                 logger.warning(f'STOPPING FILL FROM INPUT: {exc_stop}')
                 raise
@@ -72,13 +72,10 @@ class Link(Linkable):
             await self.publish(datum)
             should_continue = datum is not None
 
-    async def push(self, datum: Any) -> None:
+    def push(self, datum: Any) -> None:
         if self._transformer and isinstance(self._transformer, Callable):
             if datum is not None:
-                if iscoroutinefunction(self.transformer):
-                    datum = await self.transformer(datum)
-                else:
-                    datum = self.transformer(datum)
+                datum = self.transformer(datum)
         self._queue.put_nowait(datum)
 
     async def run(self) -> None:

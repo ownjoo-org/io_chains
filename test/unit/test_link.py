@@ -1,4 +1,5 @@
 import unittest
+from asyncio import create_task, gather
 from collections.abc import AsyncGenerator
 from logging import getLogger
 
@@ -57,7 +58,7 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
 
         # execute
         await link()
-        actual_gen = gen_sub.out()
+        actual_gen = gen_sub.a_out()
         actual: str | None = None
         async for each in actual_gen:
             actual = each
@@ -122,6 +123,40 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
 
         # assess
         self.assertIsInstance(link, Link)
+        self.assertEqual(expected, actual)
+
+        # teardown
+
+    async def test_link_should_handle_subscriber_link(self):
+        # setup
+        expected: str = 'something'
+        gen_sub: GeneratorSubscriber = GeneratorSubscriber()
+
+        loader_link: Link = Link(
+            transformer=lambda x: x,
+            subscribers=[
+                gen_sub,
+            ],
+        )
+
+        extract_link: Link = Link(
+            in_iter=gen_func,
+            subscribers=[
+                loader_link,
+            ],
+        )
+
+        # execute
+        await gather(
+            create_task(extract_link()),
+            create_task(loader_link()),
+        )
+        actual_gen = gen_sub.a_out()
+        actual: str | None = None
+        async for each in actual_gen:
+            actual = each
+
+        # assess
         self.assertEqual(expected, actual)
 
         # teardown

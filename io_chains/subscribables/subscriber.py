@@ -4,5 +4,5 @@ from typing import Any
 
 class Subscriber(ABC):
     @abstractmethod
-    async def push(self, datum: Any) -> Any:
+    def push(self, datum: Any) -> Any:
         pass

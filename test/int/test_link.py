@@ -14,16 +14,13 @@ async def get_rick_and_morty() -> AsyncGenerator[Response, None]:
     try:
         async with ClientSession() as session:
             response: ClientResponse = await session.get(url='https://rickandmortyapi.com/api/')
-            print(f'rick & morty: {response=}')
             yield response
     except Exception as e:
         logger.exception(f'get_rick_and_morty: {e}')
 
 
 async def get_json(resp, *args, **kwargs):
-    logger.info(f'GET JSON RESPONSE: {resp}')
-    data = await resp.json()
-    return f'\n\n{data}\n\n'
+    return await resp.json()
 
 
 class TestLink(unittest.IsolatedAsyncioTestCase):
