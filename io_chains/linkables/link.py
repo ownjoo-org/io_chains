@@ -1,4 +1,4 @@
-from asyncio import Queue, Task, create_task, gather, iscoroutinefunction
+from asyncio import Queue, Task, create_task, gather
 from inspect import isfunction
 from logging import getLogger
 from typing import Any, AsyncGenerator, AsyncIterable, Callable, Iterable, Optional, Union

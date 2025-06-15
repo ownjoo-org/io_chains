@@ -13,13 +13,11 @@ class TestConverters(unittest.IsolatedAsyncioTestCase):
             yield expected
 
         # execute
-        actual: None | str = None
-        actual_gen: Generator = iter_over_async(a_iter=a_gen())
-        for actual in actual_gen:
-            pass
+        gen: Generator = iter_over_async(a_iter=a_gen())
+        actual: str = next(gen)
 
         # assess
-        self.assertIsInstance(actual_gen, Generator)
+        self.assertIsInstance(gen, Generator)
         self.assertEqual(expected, actual)
 
         # teardown
