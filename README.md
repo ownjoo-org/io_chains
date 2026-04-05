@@ -12,23 +12,25 @@ pip install io_chains
 
 ### The Pipeline Model
 
-A pipeline is built from **Links** connected by **Subscribers**:
+A pipeline is built from **Links** coordinated by a **Chain**:
 
 ```
-[input source] → Link → [transformer] → Subscriber(s)
-                                          ├── CallbackSubscriber  (side effects)
-                                          ├── GeneratorSubscriber (collect results)
-                                          └── Link                (chain to next stage)
+[source] → Link → [transformer] → Subscriber(s)
+                                    ├── CallbackSubscriber  (side effects)
+                                    ├── Collector           (collect results)
+                                    └── Link                (next stage)
 ```
 
 Each `Link`:
-- Pulls items from an input source (list, generator, async generator, or callable)
-- Optionally transforms each item
-- Publishes each item to one or more subscribers concurrently
+- Pulls items from a source (list, generator, async generator, or callable)
+- Optionally transforms each item (sync or async)
+- Publishes each item to one or more subscribers
+
+A `Chain` wires multiple Links together and runs them concurrently — the caller just `await chain()`.
 
 ### End-of-stream
 
-`None` is the sentinel value that signals end-of-stream through the pipeline. Do not publish `None` as a data value.
+`EndOfStream` is the sentinel that signals end-of-stream through the pipeline. `None` is valid data and flows through the pipeline normally.
 
 ---
 
@@ -36,13 +38,13 @@ Each `Link`:
 
 ### `Link`
 
-The central class. Combines a data source, an optional transformer, and one or more subscribers.
+A single processing unit: source → transformer → subscribers.
 
 ```python
-from io_chains.linkables.link import Link
+from io_chains.links.link import Link
 
 link = Link(
-    in_iter=...,       # input source (optional)
+    source=...,        # input source (optional)
     transformer=...,   # transform function (optional)
     subscribers=[...], # subscribers (optional)
 )
@@ -53,28 +55,64 @@ await link()
 
 | Parameter | Type | Description |
 |---|---|---|
-| `in_iter` | `Iterable`, `callable`, or `AsyncIterable` | Input data source. If a callable, it is called and the result iterated. If omitted, the Link acts as a subscriber-only stage that receives data via `push()`. |
-| `transformer` | `callable` | Applied to each item before publishing. Can be sync or async. |
-| `subscribers` | `Subscriber`, `callable`, or list of either | Where output is sent. |
+| `source` | `Iterable`, callable, or `AsyncIterable` | Input data source. If a callable, it is called and the result iterated. If omitted, the Link acts as a subscriber-only stage that receives data via `push()`. |
+| `transformer` | callable | Applied to each item before publishing. Can be sync or async. |
+| `subscribers` | `Subscriber`, callable, or list of either | Where output is sent. |
 
-**Input source types**
+**Source types**
 
 ```python
 # List or any iterable
-Link(in_iter=[1, 2, 3])
+Link(source=[1, 2, 3])
 
 # Generator expression
-Link(in_iter=(x * 2 for x in range(10)))
+Link(source=(x * 2 for x in range(10)))
 
 # Async generator function (called automatically)
 async def my_source():
     yield 1
     yield 2
 
-Link(in_iter=my_source)
+Link(source=my_source)
+```
 
-# Async generator instance
-Link(in_iter=my_source())
+---
+
+### `Chain`
+
+Orchestrates multiple Links as a single pipeline. Wires them together and manages concurrent execution internally.
+
+```python
+from io_chains.links.chain import Chain
+
+pipeline = Chain(
+    source=...,        # attached to the first link (optional)
+    links=[...],       # ordered list of Links or Chains
+    subscribers=[...], # attached to the last link's output (optional)
+)
+await pipeline()       # no gather() needed
+```
+
+A Chain is itself a Linkable — it can be nested inside another Chain or used as a subscriber of an external Link.
+
+---
+
+### `Collector`
+
+Buffers items for iteration after the pipeline completes. Supports both async and sync iteration directly.
+
+```python
+from io_chains.pubsub.collector import Collector
+
+results = Collector()
+
+# async iteration (preferred)
+async for item in results:
+    print(item)
+
+# sync iteration
+for item in results:
+    print(item)
 ```
 
 ---
@@ -84,29 +122,9 @@ Link(in_iter=my_source())
 Calls a function for each item. Good for side effects (logging, writing, printing).
 
 ```python
-from io_chains.subscribables.callback_subscriber import CallbackSubscriber
+from io_chains.pubsub.callback_subscriber import CallbackSubscriber
 
 sub = CallbackSubscriber(callback=lambda x: print(x))
-```
-
----
-
-### `GeneratorSubscriber`
-
-Buffers items in a queue. Supports both async and sync iteration to collect results.
-
-```python
-from io_chains.subscribables.generator_subscriber import GeneratorSubscriber
-
-sub = GeneratorSubscriber()
-
-# async iteration
-async for item in sub.a_out():
-    print(item)
-
-# sync iteration
-for item in sub.out():
-    print(item)
 ```
 
 ---
@@ -117,102 +135,130 @@ for item in sub.out():
 
 ```python
 import asyncio
-from io_chains.linkables.link import Link
-from io_chains.subscribables.generator_subscriber import GeneratorSubscriber
+from io_chains.links.link import Link
+from io_chains.pubsub.collector import Collector
 
 async def main():
-    results = GeneratorSubscriber()
+    results = Collector()
     link = Link(
-        in_iter=[1, 2, 3],
+        source=[1, 2, 3],
         transformer=lambda x: x * 2,
         subscribers=[results],
     )
     await link()
 
-    async for item in results.a_out():
+    async for item in results:
         print(item)  # 2, 4, 6
 
 asyncio.run(main())
 ```
 
-### Multiple subscribers
+### Multi-stage pipeline with Chain
 
-Every subscriber receives every item independently.
-
-```python
-async def main():
-    log = CallbackSubscriber(callback=lambda x: print(f'log: {x}'))
-    results = GeneratorSubscriber()
-
-    link = Link(
-        in_iter=['a', 'b', 'c'],
-        subscribers=[log, results],
-    )
-    await link()
-
-    async for item in results.a_out():
-        print(f'collected: {item}')
-```
-
-### Chained links (multi-stage pipeline)
-
-When a `Link` is used as a subscriber, it receives items via `push()` into its internal queue. The downstream link must be run concurrently with `gather`.
+`Chain` manages concurrent execution — no `gather()` or `create_task()` needed.
 
 ```python
 import asyncio
-from asyncio import gather, create_task
-from io_chains.linkables.link import Link
-from io_chains.subscribables.generator_subscriber import GeneratorSubscriber
+from io_chains.links.chain import Chain
+from io_chains.links.link import Link
+from io_chains.pubsub.collector import Collector
 
 async def main():
-    results = GeneratorSubscriber()
+    results = Collector()
 
-    stage2 = Link(
-        transformer=lambda x: f'processed: {x}',
+    pipeline = Chain(
+        source=['a', 'b', 'c'],
+        links=[
+            Link(transformer=str.upper),
+            Link(transformer=lambda x: f'item: {x}'),
+        ],
         subscribers=[results],
     )
+    await pipeline()
 
-    stage1 = Link(
-        in_iter=['a', 'b', 'c'],
-        subscribers=[stage2],
-    )
-
-    await gather(
-        create_task(stage1()),
-        create_task(stage2()),
-    )
-
-    async for item in results.a_out():
+    async for item in results:
         print(item)
-    # processed: a
-    # processed: b
-    # processed: c
+    # item: A
+    # item: B
+    # item: C
 
 asyncio.run(main())
 ```
 
-### Async generator source
+### Async generator source with enrichment
 
 ```python
 from httpx import AsyncClient
+from io_chains.links.chain import Chain
+from io_chains.links.link import Link
+from io_chains.pubsub.collector import Collector
 
-async def fetch_pages():
+async def fetch_records():
     async with AsyncClient() as client:
-        for page in range(1, 4):
-            response = await client.get(f'https://api.example.com/items?page={page}')
-            yield response.json()
+        response = await client.get('https://api.example.com/records')
+        for record in response.json():
+            yield record
 
 async def main():
-    results = GeneratorSubscriber()
-    link = Link(
-        in_iter=fetch_pages,   # pass the function, not the instance
-        transformer=lambda data: data['items'],
+    results = Collector()
+
+    pipeline = Chain(
+        source=fetch_records,
+        links=[
+            Link(transformer=lambda r: {**r, 'name': r['name'].upper()}),
+        ],
         subscribers=[results],
     )
-    await link()
+    await pipeline()
 
-    async for items in results.a_out():
-        print(items)
+    async for record in results:
+        print(record)
+```
+
+### Multiple subscribers (fan-out)
+
+Every subscriber receives every item independently.
+
+```python
+from io_chains.pubsub.callback_subscriber import CallbackSubscriber
+
+audit = []
+results = Collector()
+
+pipeline = Chain(
+    source=[1, 2, 3],
+    links=[Link(transformer=lambda x: x * 2)],
+    subscribers=[
+        results,
+        CallbackSubscriber(callback=lambda x: audit.append(x)),
+    ],
+)
+await pipeline()
+# results contains [2, 4, 6], audit == [2, 4, 6]
+```
+
+### Nested Chains
+
+Chains can be nested — each is a black-box Linkable from the outside.
+
+```python
+normalise = Chain(links=[
+    Link(transformer=lambda x: abs(x)),
+    Link(transformer=lambda x: round(x, 2)),
+])
+
+stringify = Chain(links=[
+    Link(transformer=lambda x: x * 100),
+    Link(transformer=lambda x: f'{x:.0f}%'),
+])
+
+pipeline = Chain(
+    source=[-0.156, 0.999, -0.301],
+    links=[normalise, stringify],
+    subscribers=[results],
+)
+await pipeline()
+# results contains ['16%', '100%', '30%']
 ```
 
 ---
@@ -221,12 +267,13 @@ async def main():
 
 ```
 Subscriber (ABC)
-└── CallbackSubscriber
-└── GeneratorSubscriber
+├── CallbackSubscriber
+└── Collector
 
 Publisher (ABC)
 └── Linkable(Publisher, Subscriber)  (ABC)
-    └── Link
+    ├── Link
+    └── Chain
 ```
 
 **`Publisher`** manages a list of subscribers and distributes data to all of them via `publish(datum)`.
@@ -235,7 +282,9 @@ Publisher (ABC)
 
 **`Linkable`** combines both — it can receive data (as a subscriber in one pipeline) and emit data (as a publisher to its own subscribers).
 
-**`Link`** implements `Linkable`. Internally it uses an `asyncio.Queue` to decouple the input reader (`_fill_queue_from_input`) from the subscriber publisher (`_update_subscribers`), allowing both to run concurrently.
+**`Link`** implements `Linkable`. Internally it uses an `asyncio.Queue` to decouple the input reader from the subscriber publisher, allowing both to run concurrently.
+
+**`Chain`** implements `Linkable`. It wires its internal Links/Chains together, runs them all concurrently via `gather`, and presents a single `await chain()` interface to callers.
 
 ---
 
@@ -248,6 +297,6 @@ pip install -e .
 # Run unit tests
 python -m pytest test/unit -v
 
-# Run integration tests (requires network)
-python -m pytest test/int -v
+# Run user acceptance tests (requires network)
+python -m pytest test/ua -v
 ```
