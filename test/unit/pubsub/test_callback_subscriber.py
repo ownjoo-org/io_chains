@@ -1,6 +1,7 @@
 import unittest
 
-from io_chains.subscribables.callback_subscriber import CallbackSubscriber
+from io_chains.pubsub.callback_subscriber import CallbackSubscriber
+from io_chains.pubsub.sentinel import END_OF_STREAM
 
 
 class TestCallbackSubscriber(unittest.IsolatedAsyncioTestCase):
@@ -31,6 +32,18 @@ class TestCallbackSubscriber(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(expected, actual)
 
         # teardown
+
+
+    def test_should_not_invoke_callback_for_end_of_stream(self):
+        # END_OF_STREAM is a control signal, not data — the user's callback
+        # should never be called with it
+        received = []
+        sub = CallbackSubscriber(callback=lambda x: received.append(x))
+
+        sub.push('data')
+        sub.push(END_OF_STREAM)
+
+        self.assertEqual(received, ['data'])
 
 
 if __name__ == '__main__':

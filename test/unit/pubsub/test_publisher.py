@@ -1,7 +1,8 @@
 import unittest
 
-from io_chains.subscribables.generator_subscriber import GeneratorSubscriber
-from io_chains.subscribables.publisher import Publisher
+from io_chains.pubsub.collector import Collector
+from io_chains.pubsub.publisher import Publisher
+from io_chains.pubsub.sentinel import END_OF_STREAM
 
 
 class TestPublisher(unittest.IsolatedAsyncioTestCase):
@@ -21,7 +22,7 @@ class TestPublisher(unittest.IsolatedAsyncioTestCase):
         publisher = Publisher()
 
         # execute
-        publisher.subscribers = [GeneratorSubscriber()]
+        publisher.subscribers = [Collector()]
         actual = publisher.subscribers
 
         # assess
@@ -33,14 +34,14 @@ class TestPublisher(unittest.IsolatedAsyncioTestCase):
     async def test_should_publish(self):
         # setup
         publisher = Publisher()
-        gen_subscriber = GeneratorSubscriber()
+        gen_subscriber = Collector()
         publisher.subscribers = [gen_subscriber]
 
         # execute
         await publisher.publish('something')
-        await publisher.publish(None)
+        await publisher.publish(END_OF_STREAM)
         actual = None
-        async for each in gen_subscriber.a_out():
+        async for each in gen_subscriber:
             actual = each
 
         # assess
@@ -51,18 +52,18 @@ class TestPublisher(unittest.IsolatedAsyncioTestCase):
     async def test_should_publish_to_all_subscribers(self):
         # setup
         publisher = Publisher()
-        gen_sub1 = GeneratorSubscriber()
-        gen_sub2 = GeneratorSubscriber()
-        gen_sub3 = GeneratorSubscriber()
+        gen_sub1 = Collector()
+        gen_sub2 = Collector()
+        gen_sub3 = Collector()
         publisher.subscribers = [gen_sub1, gen_sub2, gen_sub3]
 
         # execute
         await publisher.publish('something')
-        await publisher.publish(None)
+        await publisher.publish(END_OF_STREAM)
 
         results = []
         for sub in [gen_sub1, gen_sub2, gen_sub3]:
-            async for each in sub.a_out():
+            async for each in sub:
                 results.append(each)
 
         # assess

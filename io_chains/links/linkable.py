@@ -1,8 +1,8 @@
 from abc import abstractmethod
 from typing import Any
 
-from io_chains.subscribables.publisher import Publisher
-from io_chains.subscribables.subscriber import Subscriber
+from io_chains.pubsub.publisher import Publisher
+from io_chains.pubsub.subscriber import Subscriber
 
 
 class Linkable(Publisher, Subscriber):

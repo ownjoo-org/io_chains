@@ -1,7 +1,7 @@
 from abc import ABC
 from typing import Callable, Iterable, Union, Any
 
-from io_chains.subscribables.subscriber import Subscriber
+from io_chains.pubsub.subscriber import Subscriber
 
 
 class Publisher(ABC):

@@ -1,9 +1,10 @@
 from asyncio import Queue, Task, create_task, gather
-from inspect import isfunction
+from inspect import isfunction, isawaitable
 from logging import getLogger
 from typing import Any, AsyncGenerator, AsyncIterable, Callable, Iterable, Optional, Union
 
-from io_chains.linkables.linkable import Linkable
+from io_chains.links.linkable import Linkable
+from io_chains.pubsub.sentinel import END_OF_STREAM, EndOfStream
 
 logger = getLogger(__name__)
 
@@ -12,14 +13,14 @@ class Link(Linkable):
     def __init__(
         self,
         *args,
-        in_iter: Union[Callable, Iterable, None] = None,
+        source: Union[Callable, Iterable, None] = None,
         transformer: Optional[Callable] = None,
         queue: Optional[Queue] = None,
         **kwargs
     ) -> None:
         super().__init__(*args, **kwargs)
         self._input: Union[AsyncIterable, Callable, Iterable, None] = None
-        self.input = in_iter
+        self.input = source
 
         self._transformer: Optional[Callable] = None
         self.transformer = transformer
@@ -44,7 +45,7 @@ class Link(Linkable):
     def input(self, in_obj: Union[AsyncIterable, Callable, Iterable, None] = None) -> None:
         if in_obj:
             if not isinstance(in_obj, (AsyncIterable, Callable, Iterable)):
-                raise TypeError(f'in_iter must be Callable or Iterable, got {type(in_obj)}')
+                raise TypeError(f'source must be Callable or Iterable, got {type(in_obj)}')
         self._input = in_obj
 
     @property
@@ -56,11 +57,11 @@ class Link(Linkable):
         self._transformer = transformer
 
     async def _fill_queue_from_input(self) -> None:
-        if self.input:
+        if self._input:
             try:
                 async for datum in self.input:
                     self.push(datum)
-                self.push(None)
+                self.push(END_OF_STREAM)
             except (StopIteration, StopAsyncIteration) as exc_stop:
                 logger.warning(f'STOPPING FILL FROM INPUT: {exc_stop}')
                 raise
@@ -69,13 +70,13 @@ class Link(Linkable):
         should_continue: bool = True
         while should_continue:
             datum: Any = await self._queue.get()
+            if not isinstance(datum, EndOfStream) and self._transformer:
+                result = self._transformer(datum)
+                datum = await result if isawaitable(result) else result
             await self.publish(datum)
-            should_continue = datum is not None
+            should_continue = not isinstance(datum, EndOfStream)
 
     def push(self, datum: Any) -> None:
-        if self._transformer and isinstance(self._transformer, Callable):
-            if datum is not None:
-                datum = self.transformer(datum)
         self._queue.put_nowait(datum)
 
     async def run(self) -> None:

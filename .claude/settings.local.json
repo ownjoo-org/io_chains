@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest test/unit -v)",
+      "Bash(pip show:*)",
+      "Bash(rm:*)",
+      "Bash(ls /c/Users/eq_fu/Documents/work/PycharmProjects/io_chains/io_chains/*.py)",
+      "Bash(git ls-tree:*)",
+      "Bash(python -m pytest test/ua -v)",
+      "Bash(python -m pytest \"test/unit/linkables/test_link.py::TestLink::test_link_subscriber_mode_waits_for_upstream_eos\" -v)",
+      "Bash(python -m pytest test/ua test/unit -v)",
+      "Bash(python -m pytest \"test/unit/linkables/test_link.py::TestLink::test_link_should_support_async_transformer\" \"test/unit/subscribables/test_callback_subscriber.py::TestCallbackSubscriber::test_should_not_invoke_callback_for_end_of_stream\" -v)",
+      "Bash(mv:*)",
+      "WebFetch(domain:rickandmortyapi.com)",
+      "Bash(python -m pytest test/ua/test_rick_and_morty.py -v)",
+      "Bash(xargs grep:*)",
+      "Bash(xargs sed:*)"
+    ]
+  }
+}

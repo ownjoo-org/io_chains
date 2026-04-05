@@ -3,8 +3,8 @@ from collections.abc import AsyncGenerator
 from logging import getLogger
 
 from httpx import Response, AsyncClient
-from io_chains.linkables.link import Link
-from io_chains.subscribables.callback_subscriber import CallbackSubscriber
+from io_chains.links.link import Link
+from io_chains.pubsub.callback_subscriber import CallbackSubscriber
 
 logger = getLogger()
 
@@ -41,7 +41,7 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
 
         # prepare to get some data and generate from the response (or just the whole response in this case)
         rick_and_morty_extractor: Link = Link(
-            in_iter=get_rick_and_morty,
+            source=get_rick_and_morty,
             subscribers=[
                 headers_link,
                 json_link,
