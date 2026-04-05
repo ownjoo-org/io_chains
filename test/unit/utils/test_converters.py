@@ -1,7 +1,7 @@
 import unittest
 from typing import Any, AsyncGenerator, Generator
 
-from utils.converters import iter_over_async
+from io_chains.utils.converters import iter_over_async
 
 
 class TestConverters(unittest.IsolatedAsyncioTestCase):

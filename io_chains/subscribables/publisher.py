@@ -31,11 +31,11 @@ class Publisher(ABC):
         else:
             raise TypeError('subscribers must be a Subscriber or Iterable[Subscriber]')
 
-    async def publish(self, datum) -> Any:
+    async def publish(self, datum) -> None:
         for subscriber in self.subscribers:
             if isinstance(subscriber, Subscriber):
-                return subscriber.push(datum),
+                subscriber.push(datum)
             elif isinstance(subscriber, Callable):
-                return subscriber(datum),
+                subscriber(datum)
             else:
                 raise TypeError('subscriber must be directly Callable or Subscriber')

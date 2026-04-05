@@ -2,8 +2,7 @@ import unittest
 from collections.abc import AsyncGenerator
 from logging import getLogger
 
-from aiohttp import ClientResponse, ClientSession
-from httpx import Response
+from httpx import Response, AsyncClient
 from io_chains.linkables.link import Link
 from io_chains.subscribables.callback_subscriber import CallbackSubscriber
 
@@ -12,8 +11,8 @@ logger = getLogger()
 
 async def get_rick_and_morty() -> AsyncGenerator[Response, None]:
     try:
-        async with ClientSession() as session:
-            response: ClientResponse = await session.get(url='https://rickandmortyapi.com/api/')
+        async with AsyncClient() as session:
+            response: Response = await session.get(url='https://rickandmortyapi.com/api/')
             yield response
     except Exception as e:
         logger.exception(f'get_rick_and_morty: {e}')

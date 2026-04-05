@@ -127,6 +127,31 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
 
         # teardown
 
+    async def test_link_should_publish_to_all_subscribers(self):
+        # setup
+        expected: str = 'something'
+        gen_sub1: GeneratorSubscriber = GeneratorSubscriber()
+        gen_sub2: GeneratorSubscriber = GeneratorSubscriber()
+        link: Link = Link(
+            in_iter=[expected],
+            subscribers=[gen_sub1, gen_sub2],
+        )
+
+        # execute
+        await link()
+        actual1: str | None = None
+        async for each in gen_sub1.a_out():
+            actual1 = each
+        actual2: str | None = None
+        async for each in gen_sub2.a_out():
+            actual2 = each
+
+        # assess
+        self.assertEqual(expected, actual1)
+        self.assertEqual(expected, actual2)
+
+        # teardown
+
     async def test_link_should_handle_subscriber_link(self):
         # setup
         expected: str = 'something'

@@ -8,5 +8,6 @@ build-backend = "setuptools.build_meta"
 name = "io_chains"
 version = "0.0.1"
 dependencies = [
-    "aiohttp",
+    "httpx",
+    "nest-asyncio",
 ]

@@ -48,6 +48,28 @@ class TestPublisher(unittest.IsolatedAsyncioTestCase):
 
         # teardown
 
+    async def test_should_publish_to_all_subscribers(self):
+        # setup
+        publisher = Publisher()
+        gen_sub1 = GeneratorSubscriber()
+        gen_sub2 = GeneratorSubscriber()
+        gen_sub3 = GeneratorSubscriber()
+        publisher.subscribers = [gen_sub1, gen_sub2, gen_sub3]
+
+        # execute
+        await publisher.publish('something')
+        await publisher.publish(None)
+
+        results = []
+        for sub in [gen_sub1, gen_sub2, gen_sub3]:
+            async for each in sub.a_out():
+                results.append(each)
+
+        # assess
+        self.assertEqual(results, ['something', 'something', 'something'])
+
+        # teardown
+
 
 if __name__ == '__main__':
     unittest.main()

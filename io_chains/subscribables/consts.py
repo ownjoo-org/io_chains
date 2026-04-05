@@ -1,1 +1,0 @@
-MAX_QUEUE_SIZE: int = 100
