@@ -5,7 +5,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "io_chains"
+name = "io-chains"
 version = "0.0.1"
 dependencies = [
     "httpx",

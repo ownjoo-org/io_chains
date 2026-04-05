@@ -1,11 +1,11 @@
-# io_chains
+# io-chains
 
 A lightweight Python library for building async data pipelines using a publisher/subscriber pattern. Chain together data sources, transformations, and consumers with minimal boilerplate.
 
 ## Installation
 
 ```bash
-pip install io_chains
+pip install io-chains
 ```
 
 ## Core Concepts
