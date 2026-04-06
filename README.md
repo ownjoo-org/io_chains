@@ -5,7 +5,7 @@ A lightweight Python library for building async data pipelines using a publisher
 ## Installation
 
 ```bash
-pip install io-chains
+pip install oj-io-chains
 ```
 
 ## Core Concepts

@@ -5,8 +5,8 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "io-chains"
-version = "0.0.1"
+name = "oj-io-chains"
+version = "0.0.2"
 description = "Lightweight async data pipelines using a publisher/subscriber pattern"
 readme = "README.md"
 license = "MIT"
