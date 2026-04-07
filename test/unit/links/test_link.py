@@ -196,6 +196,45 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
         actual = [item async for item in results]
         self.assertEqual([], actual)
 
+    # --- Fan-in (multiple upstreams) ---
+
+    async def test_link_fan_in_waits_for_all_upstream_eos(self):
+        # Two upstreams feed one downstream. Downstream must wait for both to finish.
+        results = Collector()
+        downstream = Link(transformer=lambda x: x, subscribers=[results], upstream_count=2)
+        upstream_a = Link(source=[1, 2, 3], subscribers=[downstream])
+        upstream_b = Link(source=[4, 5, 6], subscribers=[downstream])
+        await gather(
+            create_task(upstream_a()),
+            create_task(upstream_b()),
+            create_task(downstream()),
+        )
+        actual = sorted([item async for item in results])
+        self.assertEqual([1, 2, 3, 4, 5, 6], actual)
+
+    async def test_link_fan_in_default_upstream_count_unchanged(self):
+        # upstream_count=1 (default) — single upstream still works as before
+        results = Collector()
+        link = Link(source=[10, 20, 30], transformer=lambda x: x * 2, subscribers=[results])
+        await link()
+        actual = [item async for item in results]
+        self.assertEqual([20, 40, 60], actual)
+
+    async def test_link_fan_in_with_workers(self):
+        # Fan-in combined with concurrent workers
+        results = Collector()
+        downstream = Link(transformer=lambda x: x + 100, subscribers=[results],
+                          upstream_count=2, workers=2)
+        upstream_a = Link(source=[1, 2], subscribers=[downstream])
+        upstream_b = Link(source=[3, 4], subscribers=[downstream])
+        await gather(
+            create_task(upstream_a()),
+            create_task(upstream_b()),
+            create_task(downstream()),
+        )
+        actual = sorted([item async for item in results])
+        self.assertEqual([101, 102, 103, 104], actual)
+
     # --- Concurrent workers ---
 
     async def test_link_workers_produces_correct_results(self):

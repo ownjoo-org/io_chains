@@ -17,6 +17,7 @@ class Link(Linkable):
         transformer: Optional[Callable] = None,
         queue_size: int = 0,
         workers: int = 1,
+        upstream_count: int = 1,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -29,6 +30,8 @@ class Link(Linkable):
         self._queue: Queue = Queue(maxsize=queue_size)
         self._workers: int = max(1, workers)
         self._active_workers: int = self._workers
+        self._upstream_count: int = max(1, upstream_count)
+        self._eos_received: int = 0
 
     @property
     async def input(self) -> AsyncGenerator:
@@ -95,8 +98,11 @@ class Link(Linkable):
             await self.publish(datum)
 
     async def push(self, datum: Any) -> None:
-        if isinstance(datum, EndOfStream) and self._workers > 1:
-            # Each worker needs its own EOS token to shut down cleanly
+        if isinstance(datum, EndOfStream):
+            self._eos_received += 1
+            if self._eos_received < self._upstream_count:
+                return  # still waiting for other upstreams
+            # All upstreams done — inject one EOS token per worker
             for _ in range(self._workers):
                 await self._queue.put(datum)
         else:
@@ -104,6 +110,7 @@ class Link(Linkable):
 
     async def run(self) -> None:
         self._active_workers = self._workers
+        self._eos_received = 0
         lock = Lock()
         async with TaskGroup() as tg:
             tg.create_task(self._fill_queue_from_input())
