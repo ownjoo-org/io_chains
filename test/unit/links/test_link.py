@@ -196,6 +196,118 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
         actual = [item async for item in results]
         self.assertEqual([], actual)
 
+    # --- Batch processing ---
+
+    async def test_link_batch_size_groups_items(self):
+        results = Collector()
+        link = Link(
+            source=list(range(6)),
+            transformer=lambda batch: sum(batch),
+            batch_size=3,
+            subscribers=[results],
+        )
+        await link()
+        actual = [item async for item in results]
+        self.assertEqual([3, 12], actual)  # [0+1+2, 3+4+5]
+
+    async def test_link_batch_partial_batch_flushed_at_eos(self):
+        results = Collector()
+        link = Link(
+            source=list(range(5)),
+            transformer=lambda batch: sum(batch),
+            batch_size=3,
+            subscribers=[results],
+        )
+        await link()
+        actual = [item async for item in results]
+        self.assertEqual([3, 7], actual)  # [0+1+2, 3+4]
+
+    async def test_link_batch_no_transformer_publishes_each_item(self):
+        results = Collector()
+        link = Link(source=list(range(4)), batch_size=2, subscribers=[results])
+        await link()
+        actual = [item async for item in results]
+        self.assertEqual([0, 1, 2, 3], actual)
+
+    async def test_link_batch_transformer_can_return_skip(self):
+        results = Collector()
+        # Drop every second batch
+        batches_seen = []
+        def transformer(batch):
+            batches_seen.append(batch)
+            return SKIP if len(batches_seen) % 2 == 0 else sum(batch)
+        link = Link(source=list(range(6)), transformer=transformer,
+                    batch_size=2, subscribers=[results])
+        await link()
+        actual = [item async for item in results]
+        self.assertEqual([1, 9], actual)  # batch[0,1]=1 kept, batch[2,3]=5 dropped, batch[4,5]=9 kept
+
+    async def test_link_batch_transformer_can_flat_map(self):
+        results = Collector()
+        # Each batch yields its items doubled
+        link = Link(
+            source=list(range(4)),
+            transformer=lambda batch: (x * 2 for x in batch),
+            batch_size=2,
+            subscribers=[results],
+        )
+        await link()
+        actual = [item async for item in results]
+        self.assertEqual([0, 2, 4, 6], actual)
+
+    # --- Error handling ---
+
+    async def test_link_on_error_skip_continues_stream(self):
+        results = Collector()
+        def bad_transformer(x):
+            if x == 2:
+                raise ValueError('bad item')
+            return x * 10
+        link = Link(
+            source=[1, 2, 3],
+            transformer=bad_transformer,
+            on_error=lambda e, item: SKIP,
+            subscribers=[results],
+        )
+        await link()
+        actual = [item async for item in results]
+        self.assertEqual([10, 30], actual)
+
+    async def test_link_on_error_fallback_value(self):
+        results = Collector()
+        def bad_transformer(x):
+            if x == 2:
+                raise ValueError('bad item')
+            return x * 10
+        link = Link(
+            source=[1, 2, 3],
+            transformer=bad_transformer,
+            on_error=lambda e, item: -1,
+            subscribers=[results],
+        )
+        await link()
+        actual = [item async for item in results]
+        self.assertEqual([10, -1, 30], actual)
+
+    async def test_link_on_error_not_set_propagates_exception(self):
+        link = Link(source=[1], transformer=lambda x: 1 / 0)
+        with self.assertRaises(ExceptionGroup):
+            await link()
+
+    async def test_link_on_error_async_handler(self):
+        results = Collector()
+        async def async_handler(e, item):
+            return item  # passthrough on error
+        link = Link(
+            source=[1, 2, 3],
+            transformer=lambda x: 1 / 0,
+            on_error=async_handler,
+            subscribers=[results],
+        )
+        await link()
+        actual = [item async for item in results]
+        self.assertEqual([1, 2, 3], actual)
+
     # --- Fan-in (multiple upstreams) ---
 
     async def test_link_fan_in_waits_for_all_upstream_eos(self):

@@ -1,4 +1,5 @@
 from abc import ABC
+from asyncio import TaskGroup
 from collections.abc import Iterable
 from typing import Any, Union
 
@@ -35,5 +36,11 @@ class Publisher(ABC):
             raise TypeError('subscribers must be a Subscriber or Iterable[Subscriber]')
 
     async def publish(self, datum: Any) -> None:
-        for subscriber in self._subscribers:
-            await subscriber.push(datum)
+        if not self._subscribers:
+            return
+        if len(self._subscribers) == 1:
+            await self._subscribers[0].push(datum)
+        else:
+            async with TaskGroup() as tg:
+                for subscriber in self._subscribers:
+                    tg.create_task(subscriber.push(datum))

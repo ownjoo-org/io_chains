@@ -44,5 +44,31 @@ class TestPublisher(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(['something', 'something', 'something'], results)
 
 
+    async def test_concurrent_fan_out_all_subscribers_receive_datum(self):
+        # All subscribers must receive every item even when fan-out is concurrent.
+        subs = [Collector(), Collector(), Collector()]
+        publisher = Publisher()
+        publisher.subscribers = subs
+        await publisher.publish('x')
+        await publisher.publish(END_OF_STREAM)
+        for sub in subs:
+            items = [item async for item in sub]
+            self.assertEqual(['x'], items)
+
+    async def test_single_subscriber_fast_path(self):
+        # Single subscriber uses the direct-await path (no TaskGroup overhead).
+        collector = Collector()
+        publisher = Publisher()
+        publisher.subscribers = [collector]
+        await publisher.publish(42)
+        await publisher.publish(END_OF_STREAM)
+        actual = [item async for item in collector]
+        self.assertEqual([42], actual)
+
+    async def test_no_subscribers_publish_is_noop(self):
+        publisher = Publisher()
+        await publisher.publish('anything')  # must not raise
+
+
 if __name__ == '__main__':
     unittest.main()
