@@ -1,6 +1,6 @@
 import unittest
 
-from io_chains.pubsub.sentinel import END_OF_STREAM, EndOfStream, SKIP, Skip
+from io_chains.pubsub.sentinel import END_OF_STREAM, SKIP, EndOfStream, Skip
 
 
 class TestEndOfStream(unittest.TestCase):

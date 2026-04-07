@@ -22,7 +22,6 @@ from io_chains.pubsub.collector import Collector
 from io_chains.pubsub.envelope import Envelope
 from io_chains.pubsub.sentinel import SKIP
 
-
 # ---------------------------------------------------------------------------
 # Limit
 # ---------------------------------------------------------------------------

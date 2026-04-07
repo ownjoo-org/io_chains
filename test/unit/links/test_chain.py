@@ -15,14 +15,13 @@ Limitations intentionally deferred:
   - Fan-in (multiple upstream sources into one downstream link)
 """
 import unittest
-from asyncio import gather, create_task
+from asyncio import create_task, gather
 from collections.abc import AsyncGenerator
 
 from io_chains.links.chain import Chain
 from io_chains.links.link import Link
 from io_chains.pubsub.callback_subscriber import CallbackSubscriber
 from io_chains.pubsub.collector import Collector
-
 
 # ---------------------------------------------------------------------------
 # Simulated async data sources

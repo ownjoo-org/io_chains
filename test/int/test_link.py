@@ -1,9 +1,9 @@
 import unittest
-from asyncio import gather, create_task
 from collections.abc import AsyncGenerator
 from logging import getLogger
 
-from httpx import Response, AsyncClient
+from httpx import AsyncClient, Response
+
 from io_chains.links.link import Link
 from io_chains.pubsub.callback_subscriber import CallbackSubscriber
 from io_chains.pubsub.collector import Collector

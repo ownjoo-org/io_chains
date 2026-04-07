@@ -3,7 +3,6 @@ from collections.abc import AsyncGenerator, Callable, Iterable
 from typing import Any
 
 from io_chains.links.linkable import Linkable
-from io_chains.pubsub.sentinel import EndOfStream
 
 
 def _output_of(linkable: Linkable) -> Linkable:

@@ -5,7 +5,7 @@ from logging import getLogger
 from typing import Any
 
 from io_chains.links.linkable import Linkable
-from io_chains.pubsub.sentinel import END_OF_STREAM, EndOfStream, SKIP, Skip
+from io_chains.pubsub.sentinel import END_OF_STREAM, EndOfStream, Skip
 
 logger = getLogger(__name__)
 
