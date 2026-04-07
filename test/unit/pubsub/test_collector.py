@@ -6,50 +6,36 @@ from io_chains.pubsub.sentinel import END_OF_STREAM
 
 class TestCollector(unittest.IsolatedAsyncioTestCase):
     def test_should_instantiate(self):
-        # setup
-
-        # execute
-        actual: Collector = Collector()
-
-        # assess
+        actual = Collector()
         self.assertIsInstance(actual, Collector)
 
-        # teardown
-
-    def test_should_iterate_sync(self):
-        # setup
-        subscriber = Collector()
-        expected: str = 'something'
-
-        # execute
-        subscriber.push(expected)  # put our expected value in the queue
-        subscriber.push(END_OF_STREAM)  # tell it we're done
-        actual: str | None = None
-        for each in subscriber:
-            actual = each
-
-        # assess
-        self.assertEqual(expected, actual)
-
-        # teardown
-
     async def test_should_iterate_async(self):
-        # setup
-        subscriber = Collector()
-        expected: str = 'something'
-
-        # execute
-        subscriber.push(expected)  # put our expected value in the queue
-        subscriber.push(END_OF_STREAM)  # tell it we're done
-        actual: str | None = None
-        async for each in subscriber:
+        collector = Collector()
+        expected = 'something'
+        await collector.push(expected)
+        await collector.push(END_OF_STREAM)
+        actual = None
+        async for each in collector:
             actual = each
-
-        # assess
-        self.assertIsInstance(subscriber, Collector)
         self.assertEqual(expected, actual)
 
-        # teardown
+    async def test_should_iterate_sync_after_pipeline(self):
+        # Sync iteration drains buffered items — valid after the pipeline has completed.
+        collector = Collector()
+        await collector.push('a')
+        await collector.push('b')
+        await collector.push(END_OF_STREAM)
+        actual = list(collector)
+        self.assertEqual(['a', 'b'], actual)
+
+    async def test_should_respect_maxsize_with_backpressure(self):
+        # maxsize includes the EOS sentinel, so reserve one slot for it.
+        collector = Collector(maxsize=3)
+        await collector.push(1)
+        await collector.push(2)
+        await collector.push(END_OF_STREAM)
+        actual = list(collector)
+        self.assertEqual([1, 2], actual)
 
 
 if __name__ == '__main__':

@@ -14,7 +14,27 @@
       "WebFetch(domain:rickandmortyapi.com)",
       "Bash(python -m pytest test/ua/test_rick_and_morty.py -v)",
       "Bash(xargs grep:*)",
-      "Bash(xargs sed:*)"
+      "Bash(xargs sed:*)",
+      "Bash(python -m build --version)",
+      "Bash(python -m twine --version)",
+      "Bash(pip install:*)",
+      "Bash(rm -rf dist)",
+      "Bash(python -m build)",
+      "Bash(gh api:*)",
+      "Bash(aws sts:*)",
+      "Bash(aws route53:*)",
+      "Bash(aws s3api create-bucket:*)",
+      "Bash(aws s3api put-bucket-website:*)",
+      "Bash(.venv/Scripts/python:*)",
+      "Bash(cmd:*)",
+      "Bash(where python:*)",
+      "Bash(.venv/Scripts/python.exe --version)",
+      "Bash(.venv/Scripts/python.exe -m pytest test/unit -v)",
+      "Bash(ls .venv/Scripts/pytest*)",
+      "Bash(ls .venv/Scripts/*.exe)",
+      "Bash(python -m pip show pytest)",
+      "Bash(python -c \"import sys; print\\(sys.executable\\)\")",
+      "Bash(C:/Users/eq_fu/AppData/Local/Python/pythoncore-3.14-64/python.exe:*)"
     ]
   }
 }

@@ -1,10 +1,12 @@
 import unittest
+from asyncio import gather, create_task
 from collections.abc import AsyncGenerator
 from logging import getLogger
 
 from httpx import Response, AsyncClient
 from io_chains.links.link import Link
 from io_chains.pubsub.callback_subscriber import CallbackSubscriber
+from io_chains.pubsub.collector import Collector
 
 logger = getLogger()
 
@@ -18,44 +20,28 @@ async def get_rick_and_morty() -> AsyncGenerator[Response, None]:
         logger.exception(f'get_rick_and_morty: {e}')
 
 
-async def get_json(resp, *args, **kwargs):
+async def get_json(resp):
     return await resp.json()
 
 
 class TestLink(unittest.IsolatedAsyncioTestCase):
     async def test_link_should_extract_rick_and_morty(self):
-        # setup
-        # prepare to show the headers
-        headers_link = Link(
-            transformer=lambda resp, *args, **kwargs: f'HEADERS LINK SUB:\n{resp.headers}\n\n',
-            subscribers=[
-                CallbackSubscriber(callback=lambda value: print(value))  # print just so we can see some output
-            ],
-        )
+        results = Collector()
 
-        # prepare to show the body
-        json_link = Link(
-            transformer=get_json,
-            subscribers=CallbackSubscriber(callback=lambda value: print(f'JSON LINK SUB: {value}')),
-        )
-
-        # prepare to get some data and generate from the response (or just the whole response in this case)
-        rick_and_morty_extractor: Link = Link(
+        pipeline = Link(
             source=get_rick_and_morty,
+            transformer=get_json,
             subscribers=[
-                headers_link,
-                json_link,
+                results,
+                CallbackSubscriber(callback=lambda value: print(f'API response: {list(value.keys())}')),
             ],
         )
 
-        # execute
-        actual = await rick_and_morty_extractor()
+        await pipeline()
 
-        # assess
-        self.assertIsInstance(rick_and_morty_extractor, Link)
-        # self.assertIsInstance(actual, AsyncGenerator)
-
-        # teardown
+        actual = [item async for item in results]
+        self.assertEqual(1, len(actual))
+        self.assertIsInstance(actual[0], dict)
 
 
 if __name__ == '__main__':

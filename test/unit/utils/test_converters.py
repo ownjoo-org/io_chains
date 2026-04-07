@@ -1,26 +1,13 @@
 import unittest
-from typing import Any, AsyncGenerator, Generator
 
-from io_chains.utils.converters import iter_over_async
+# iter_over_async was removed in 0.1.0.
+# Collector now uses asyncio.Queue.get_nowait() for sync iteration, eliminating nest_asyncio.
+# This file is retained as a placeholder.
 
 
-class TestConverters(unittest.IsolatedAsyncioTestCase):
-    async def test_iter_over_async(self):
-        # setup
-        expected: str = 'something'
-
-        async def a_gen() -> AsyncGenerator[Any, None]:
-            yield expected
-
-        # execute
-        gen: Generator = iter_over_async(a_iter=a_gen())
-        actual: str = next(gen)
-
-        # assess
-        self.assertIsInstance(gen, Generator)
-        self.assertEqual(expected, actual)
-
-        # teardown
+class TestConverters(unittest.TestCase):
+    def test_placeholder(self):
+        pass
 
 
 if __name__ == '__main__':

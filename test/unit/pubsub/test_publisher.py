@@ -7,69 +7,41 @@ from io_chains.pubsub.sentinel import END_OF_STREAM
 
 class TestPublisher(unittest.IsolatedAsyncioTestCase):
     def test_should_instantiate(self):
-        # setup
-
-        # execute
         actual = Publisher()
-
-        # assess
         self.assertIsInstance(actual, Publisher)
 
-        # teardown
-
-    def test_should_set_get_subscribers(self):
-        # setup
+    def test_should_set_and_get_subscribers(self):
         publisher = Publisher()
-
-        # execute
         publisher.subscribers = [Collector()]
-        actual = publisher.subscribers
+        self.assertTrue(len(publisher.subscribers))
 
-        # assess
-        self.assertIsInstance(publisher, Publisher)
-        self.assertTrue(len(actual))
-
-        # teardown
-
-    async def test_should_publish(self):
-        # setup
+    def test_should_reject_non_subscriber(self):
         publisher = Publisher()
-        gen_subscriber = Collector()
-        publisher.subscribers = [gen_subscriber]
+        with self.assertRaises(TypeError):
+            publisher.subscribers = [lambda x: x]
 
-        # execute
+    async def test_should_publish_to_subscriber(self):
+        publisher = Publisher()
+        collector = Collector()
+        publisher.subscribers = [collector]
         await publisher.publish('something')
         await publisher.publish(END_OF_STREAM)
         actual = None
-        async for each in gen_subscriber:
+        async for each in collector:
             actual = each
-
-        # assess
-        self.assertIsNotNone(actual)
-
-        # teardown
+        self.assertEqual('something', actual)
 
     async def test_should_publish_to_all_subscribers(self):
-        # setup
         publisher = Publisher()
-        gen_sub1 = Collector()
-        gen_sub2 = Collector()
-        gen_sub3 = Collector()
-        publisher.subscribers = [gen_sub1, gen_sub2, gen_sub3]
-
-        # execute
+        subs = [Collector(), Collector(), Collector()]
+        publisher.subscribers = subs
         await publisher.publish('something')
         await publisher.publish(END_OF_STREAM)
-
         results = []
-        for sub in [gen_sub1, gen_sub2, gen_sub3]:
+        for sub in subs:
             async for each in sub:
                 results.append(each)
-
-        # assess
-        self.assertEqual(results, ['something', 'something', 'something'])
-
-        # teardown
+        self.assertEqual(['something', 'something', 'something'], results)
 
 
 if __name__ == '__main__':

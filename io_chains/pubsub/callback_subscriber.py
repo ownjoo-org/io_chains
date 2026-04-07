@@ -1,3 +1,4 @@
+from inspect import isawaitable
 from logging import getLogger
 from typing import Any, Callable
 
@@ -11,10 +12,13 @@ class CallbackSubscriber(Subscriber):
     def __init__(self, callback: Callable):
         self._callback = callback
 
-    def push(self, datum: Any) -> Any:
+    async def push(self, datum: Any) -> Any:
         if isinstance(datum, EndOfStream):
             return
         try:
-            return self._callback(datum)
+            result = self._callback(datum)
+            if isawaitable(result):
+                return await result
+            return result
         except Exception as e:
             logger.exception(f"CallbackSubscriber.push: {self._callback}: {e}")

@@ -1,5 +1,6 @@
 from abc import ABC
-from typing import Callable, Iterable, Union, Any
+from collections.abc import Iterable
+from typing import Any, Union
 
 from io_chains.pubsub.subscriber import Subscriber
 
@@ -8,34 +9,31 @@ class Publisher(ABC):
     def __init__(
         self,
         *args,
-        subscribers: Union[Iterable[Callable], None, Callable] = None,
-        **kwargs
+        subscribers: Union['Subscriber', Iterable['Subscriber'], None] = None,
+        **kwargs,
     ) -> None:
-        self._subscribers: list = []
+        super().__init__(*args, **kwargs)
+        self._subscribers: list[Subscriber] = []
         self.subscribers = subscribers
 
     @property
-    def subscribers(self) -> list[Callable | Subscriber]:
+    def subscribers(self) -> list[Subscriber]:
         return self._subscribers
 
     @subscribers.setter
-    def subscribers(self, subscribers: Union[Iterable[Callable], None, Callable]) -> None:
+    def subscribers(self, subscribers: Union['Subscriber', Iterable['Subscriber'], None]) -> None:
         if not subscribers:
             return
-        if isinstance(subscribers, (Callable, Subscriber)):
+        if isinstance(subscribers, Subscriber):
             self._subscribers.append(subscribers)
         elif isinstance(subscribers, Iterable):
             for subscriber in subscribers:
-                if isinstance(subscriber, (Callable, Subscriber)):
-                    self._subscribers.append(subscriber)
+                if not isinstance(subscriber, Subscriber):
+                    raise TypeError(f'each subscriber must be a Subscriber, got {type(subscriber)}')
+                self._subscribers.append(subscriber)
         else:
             raise TypeError('subscribers must be a Subscriber or Iterable[Subscriber]')
 
-    async def publish(self, datum) -> None:
-        for subscriber in self.subscribers:
-            if isinstance(subscriber, Subscriber):
-                subscriber.push(datum)
-            elif isinstance(subscriber, Callable):
-                subscriber(datum)
-            else:
-                raise TypeError('subscriber must be directly Callable or Subscriber')
+    async def publish(self, datum: Any) -> None:
+        for subscriber in self._subscribers:
+            await subscriber.push(datum)

@@ -5,214 +5,126 @@ from logging import getLogger
 
 from io_chains.links.link import Link
 from io_chains.pubsub.collector import Collector
+from io_chains.pubsub.sentinel import END_OF_STREAM
 
 logger = getLogger()
 
 
 async def gen_func() -> AsyncGenerator[str, None]:
-    try:
-        yield 'something'
-    except Exception as e:
-        logger.exception(f'gen_func: {e}')
+    yield 'something'
 
 
 class TestLink(unittest.IsolatedAsyncioTestCase):
     def test_link_should_instantiate(self):
-        # setup
-
-        # execute
         actual = Link()
-
-        # assess
         self.assertIsInstance(actual, Link)
 
-        # teardown
-
-    async def test_link_should_handle_subscriber_lambda(self):
-        # setup
-
-        # execute
-        actual = Link(
-            source=[0, 1, 2],
-            subscribers=[
-                lambda value: print(f'LIST VAL: {value}'),
-            ],
-        )
-        await actual()
-
-        # assess
-        self.assertIsInstance(actual, Link)
-
-        # teardown
+    async def test_link_should_handle_list_source(self):
+        results = Collector()
+        link = Link(source=[1, 2, 3], subscribers=[results])
+        await link()
+        actual = [item async for item in results]
+        self.assertEqual([1, 2, 3], actual)
 
     async def test_link_should_handle_subscriber(self):
-        # setup
-        expected: str = 'something'
-        gen_sub: Collector = Collector()
-        link: Link = Link(
-            source=[expected],
-            subscribers=[
-                gen_sub,
-            ],
-        )
-
-        # execute
+        expected = 'something'
+        collector = Collector()
+        link = Link(source=[expected], subscribers=[collector])
         await link()
-        actual: str | None = None
-        async for each in gen_sub:
+        actual = None
+        async for each in collector:
             actual = each
-
-        # assess
-        self.assertIsInstance(link, Link)
         self.assertEqual(expected, actual)
-
-        # teardown
 
     async def test_link_input_should_generate_from_list(self):
-        # setup
-        expected: str = 'something'
-
-        link: Link = Link(
-            source=[expected],
-        )
-
-        # execute
+        expected = 'something'
+        link = Link(source=[expected])
         actual = None
         async for each in link.input:
             actual = each
-
-        # assess
-        self.assertIsInstance(link, Link)
         self.assertEqual(expected, actual)
-
-        # teardown
 
     async def test_link_input_should_generate_from_generator(self):
-        # setup
-        expected: str = 'something'
-        expected_list: list = [expected]
-
-        link: Link = Link(
-            source=(x for x in expected_list),
-        )
-
-        # execute
+        expected = 'something'
+        link = Link(source=(x for x in [expected]))
         actual = None
         async for each in link.input:
             actual = each
-
-        # assess
-        self.assertIsInstance(link, Link)
         self.assertEqual(expected, actual)
 
-        # teardown
-
-    async def test_link_input_should_generate_from_func(self):
-        # setup
-        expected: str = 'something'
-
-        link: Link = Link(
-            source=gen_func,
-        )
-
-        # execute
+    async def test_link_input_should_generate_from_async_gen_func(self):
+        expected = 'something'
+        link = Link(source=gen_func)
         actual = None
         async for each in link.input:
             actual = each
-
-        # assess
-        self.assertIsInstance(link, Link)
         self.assertEqual(expected, actual)
 
-        # teardown
+    async def test_link_input_should_generate_from_sync_callable(self):
+        # A callable that returns a plain iterable (not an async generator)
+        link = Link(source=lambda: [10, 20, 30])
+        actual = [item async for item in link.input]
+        self.assertEqual([10, 20, 30], actual)
 
     async def test_link_should_publish_to_all_subscribers(self):
-        # setup
-        expected: str = 'something'
-        gen_sub1: Collector = Collector()
-        gen_sub2: Collector = Collector()
-        link: Link = Link(
-            source=[expected],
-            subscribers=[gen_sub1, gen_sub2],
-        )
-
-        # execute
+        expected = 'something'
+        sub1 = Collector()
+        sub2 = Collector()
+        link = Link(source=[expected], subscribers=[sub1, sub2])
         await link()
-        actual1: str | None = None
-        async for each in gen_sub1:
+        actual1 = None
+        async for each in sub1:
             actual1 = each
-        actual2: str | None = None
-        async for each in gen_sub2:
+        actual2 = None
+        async for each in sub2:
             actual2 = each
-
-        # assess
         self.assertEqual(expected, actual1)
         self.assertEqual(expected, actual2)
 
-        # teardown
-
     async def test_link_should_support_async_transformer(self):
-        # An async transformer should be awaited and produce the correct result
-        gen_sub = Collector()
-
         async def double(x):
             return x * 2
 
-        link = Link(source=[1, 2, 3], transformer=double, subscribers=[gen_sub])
+        results = Collector()
+        link = Link(source=[1, 2, 3], transformer=double, subscribers=[results])
         await link()
-
-        actual = [item async for item in gen_sub]
-        self.assertEqual(actual, [2, 4, 6])
+        actual = [item async for item in results]
+        self.assertEqual([2, 4, 6], actual)
 
     async def test_link_subscriber_mode_waits_for_upstream_eos(self):
-        # A link with no in_iter must NOT push a spurious END_OF_STREAM on startup.
-        # It should terminate only when END_OF_STREAM arrives via push() from upstream.
-        from io_chains.pubsub.sentinel import END_OF_STREAM
-        gen_sub = Collector()
-        link = Link(transformer=lambda x: x * 2, subscribers=[gen_sub])
-
-        # Simulate upstream: push data then signal end
-        link.push(5)
-        link.push(10)
-        link.push(END_OF_STREAM)
-
+        # A sourceless link must NOT emit END_OF_STREAM on its own —
+        # it must wait for EOS to arrive via push() from upstream.
+        results = Collector()
+        link = Link(transformer=lambda x: x * 2, subscribers=[results])
+        await link.push(5)
+        await link.push(10)
+        await link.push(END_OF_STREAM)
         await link()
-
-        actual = [item async for item in gen_sub]
-        self.assertEqual(actual, [10, 20])
+        actual = [item async for item in results]
+        self.assertEqual([10, 20], actual)
 
     async def test_link_should_handle_subscriber_link(self):
-        # setup
-        expected: str = 'something'
-        gen_sub: Collector = Collector()
-
-        loader_link: Link = Link(
-            transformer=lambda x: x,
-            subscribers=[
-                gen_sub,
-            ],
-        )
-
-        extract_link: Link = Link(
-            source=gen_func,
-            subscribers=[
-                loader_link,
-            ],
-        )
-
-        # execute
+        expected = 'something'
+        collector = Collector()
+        loader = Link(transformer=lambda x: x, subscribers=[collector])
+        extractor = Link(source=gen_func, subscribers=[loader])
         await gather(
-            create_task(extract_link()),
-            create_task(loader_link()),
+            create_task(extractor()),
+            create_task(loader()),
         )
-        actual: str | None = None
-        async for each in gen_sub:
+        actual = None
+        async for each in collector:
             actual = each
-
-        # assess
         self.assertEqual(expected, actual)
 
-        # teardown
+    async def test_link_queue_size_applies_backpressure(self):
+        # A bounded queue (queue_size=1) should still produce correct results —
+        # the producer blocks until the consumer drains each slot.
+        results = Collector()
+        link = Link(source=list(range(5)), transformer=lambda x: x * 2, subscribers=[results], queue_size=1)
+        await link()
+        actual = [item async for item in results]
+        self.assertEqual([0, 2, 4, 6, 8], actual)
 
 
 if __name__ == '__main__':
