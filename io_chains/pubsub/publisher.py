@@ -1,7 +1,7 @@
 from abc import ABC
 from asyncio import TaskGroup
 from collections.abc import Iterable
-from typing import Any, Union
+from typing import Any
 
 from io_chains.pubsub.subscriber import Subscriber
 
@@ -10,7 +10,7 @@ class Publisher(ABC):
     def __init__(
         self,
         *args,
-        subscribers: Union['Subscriber', Iterable['Subscriber'], None] = None,
+        subscribers: 'Subscriber | Iterable[Subscriber] | None' = None,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -22,7 +22,7 @@ class Publisher(ABC):
         return self._subscribers
 
     @subscribers.setter
-    def subscribers(self, subscribers: Union['Subscriber', Iterable['Subscriber'], None]) -> None:
+    def subscribers(self, subscribers: 'Subscriber | Iterable[Subscriber] | None') -> None:
         if not subscribers:
             return
         if isinstance(subscribers, Subscriber):
@@ -34,6 +34,17 @@ class Publisher(ABC):
                 self._subscribers.append(subscriber)
         else:
             raise TypeError('subscribers must be a Subscriber or Iterable[Subscriber]')
+
+    def subscribe(self, subscriber: Subscriber, channel: str | None = None) -> None:
+        """Wire a subscriber, optionally tagging each item with a channel label.
+
+        subscribe(sub)               — equivalent to appending sub directly
+        subscribe(sub, channel='x')  — wraps each item in Envelope(data, channel='x')
+        """
+        if channel is not None:
+            from io_chains.pubsub.channel_subscriber import ChannelSubscriber
+            subscriber = ChannelSubscriber(subscriber=subscriber, channel=channel)
+        self._subscribers.append(subscriber)
 
     async def publish(self, datum: Any) -> None:
         if not self._subscribers:

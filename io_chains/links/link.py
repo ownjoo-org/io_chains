@@ -1,7 +1,8 @@
 from asyncio import Lock, Queue, TaskGroup
+from collections.abc import AsyncGenerator, AsyncIterable, Callable, Iterable
 from inspect import isawaitable, isgenerator
 from logging import getLogger
-from typing import Any, AsyncGenerator, AsyncIterable, Callable, Iterable, Optional, Union
+from typing import Any
 
 from io_chains.links.linkable import Linkable
 from io_chains.pubsub.sentinel import END_OF_STREAM, EndOfStream, SKIP, Skip
@@ -13,21 +14,20 @@ class Link(Linkable):
     def __init__(
         self,
         *args,
-        source: Union[Callable, Iterable, None] = None,
-        transformer: Optional[Callable] = None,
+        source: Callable | Iterable | None = None,
+        transformer: Callable | None = None,
         queue_size: int = 0,
         workers: int = 1,
         upstream_count: int = 1,
         batch_size: int = 1,
-        on_error: Optional[Callable] = None,
+        on_error: Callable | None = None,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
-        self._input: Union[AsyncIterable, Callable, Iterable, None] = None
+        self._input: AsyncIterable | Callable | Iterable | None = None
         self.input = source
 
-        self._transformer: Optional[Callable] = None
-        self.transformer = transformer
+        self._transformer: Callable | None = transformer
 
         self._queue: Queue = Queue(maxsize=queue_size)
         self._workers: int = max(1, workers)
@@ -35,7 +35,7 @@ class Link(Linkable):
         self._upstream_count: int = max(1, upstream_count)
         self._eos_received: int = 0
         self._batch_size: int = max(1, batch_size)
-        self._on_error: Optional[Callable] = on_error
+        self._on_error: Callable | None = on_error
 
     @property
     async def input(self) -> AsyncGenerator:
@@ -50,18 +50,10 @@ class Link(Linkable):
                 yield each
 
     @input.setter
-    def input(self, in_obj: Union[AsyncIterable, Callable, Iterable, None]) -> None:
+    def input(self, in_obj: AsyncIterable | Callable | Iterable | None) -> None:
         if in_obj is not None and not isinstance(in_obj, (AsyncIterable, Callable, Iterable)):
             raise TypeError(f'source must be Callable or Iterable, got {type(in_obj)}')
         self._input = in_obj
-
-    @property
-    def transformer(self) -> Optional[Callable]:
-        return self._transformer
-
-    @transformer.setter
-    def transformer(self, transformer: Optional[Callable]) -> None:
-        self._transformer = transformer
 
     async def _fill_queue_from_input(self) -> None:
         if self._input is not None:
@@ -120,24 +112,27 @@ class Link(Linkable):
             if self._active_workers == 0:
                 await self.publish(END_OF_STREAM)
 
-    async def _worker(self, lock: Lock) -> None:
+    async def _worker_batch(self, lock: Lock) -> None:
         while True:
-            if self._batch_size > 1:
-                batch, eos_received = await self._collect_batch()
-                if batch:
-                    await self._process_and_publish(batch)
-                if eos_received:
-                    await self._handle_eos(lock)
-                    break
-            else:
-                datum = await self._queue.get()
-                if isinstance(datum, EndOfStream):
-                    await self._handle_eos(lock)
-                    break
-                await self._process_and_publish(datum)
+            batch, eos_received = await self._collect_batch()
+            if batch:
+                await self._process_and_publish(batch)
+            if eos_received:
+                await self._handle_eos(lock)
+                break
+
+    async def _worker_single(self, lock: Lock) -> None:
+        while True:
+            datum = await self._queue.get()
+            if isinstance(datum, EndOfStream):
+                await self._handle_eos(lock)
+                break
+            await self._process_and_publish(datum)
 
     async def push(self, datum: Any) -> None:
         if isinstance(datum, EndOfStream):
+            # asyncio is single-threaded: no yield between increment and check,
+            # so this counter is safe without a lock
             self._eos_received += 1
             if self._eos_received < self._upstream_count:
                 return  # still waiting for other upstreams
@@ -150,10 +145,11 @@ class Link(Linkable):
         self._active_workers = self._workers
         self._eos_received = 0
         lock = Lock()
+        worker = self._worker_batch if self._batch_size > 1 else self._worker_single
         async with TaskGroup() as tg:
             tg.create_task(self._fill_queue_from_input())
             for _ in range(self._workers):
-                tg.create_task(self._worker(lock))
+                tg.create_task(worker(lock))
 
     async def __call__(self) -> None:
         await self.run()

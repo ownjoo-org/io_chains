@@ -15,13 +15,33 @@ class Collector(Subscriber):
     Supports both async and sync iteration:
         async for item in collector: ...   (preferred; works inside a running event loop)
         for item in collector: ...         (works after the pipeline has completed)
+
+    When subscribed via subscribe(channel=...) from multiple upstreams, the Collector
+    automatically counts how many channels are wired (via _register_upstream) and waits
+    for all of them to send EndOfStream before stopping iteration.
     """
 
     def __init__(self, maxsize: int = 0):
         self._queue: Queue = Queue(maxsize=maxsize)
+        self._upstream_count: int = 0  # 0 = single-upstream legacy mode
+        self._eos_received: int = 0
+
+    def _register_upstream(self) -> None:
+        """Called by ChannelSubscriber when wiring to register one upstream channel."""
+        self._upstream_count += 1
 
     async def push(self, datum: Any) -> None:
-        await self._queue.put(datum)
+        if isinstance(datum, EndOfStream):
+            if self._upstream_count == 0:
+                # Legacy single-upstream mode: first EOS stops the collector
+                await self._queue.put(datum)
+            else:
+                # asyncio is single-threaded; no yield between increment and check
+                self._eos_received += 1
+                if self._eos_received >= self._upstream_count:
+                    await self._queue.put(datum)
+        else:
+            await self._queue.put(datum)
 
     def __aiter__(self):
         return self

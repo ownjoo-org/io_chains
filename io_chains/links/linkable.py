@@ -12,7 +12,6 @@ class Linkable(Publisher, Subscriber):
 
     Concrete subclasses must implement:
       - input property (async generator over the source)
-      - _fill_queue_from_input (drive the source into the internal queue)
       - push (satisfy Subscriber; route datum into the internal queue)
       - __call__ (run the linkable)
     """
@@ -20,10 +19,6 @@ class Linkable(Publisher, Subscriber):
     @property
     @abstractmethod
     async def input(self) -> Any:
-        pass
-
-    @abstractmethod
-    async def _fill_queue_from_input(self) -> None:
         pass
 
     @abstractmethod

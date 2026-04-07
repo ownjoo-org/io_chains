@@ -1,5 +1,6 @@
 from asyncio import TaskGroup
-from typing import Any, AsyncGenerator, Callable, Iterable, Union
+from collections.abc import AsyncGenerator, Callable, Iterable
+from typing import Any
 
 from io_chains.links.linkable import Linkable
 from io_chains.pubsub.sentinel import EndOfStream
@@ -39,8 +40,8 @@ class Chain(Linkable):
         self,
         *args,
         links: list[Linkable],
-        source: Union[Callable, Iterable, None] = None,
-        subscribers: Union[Iterable, None] = None,
+        source: Callable | Iterable | None = None,
+        subscribers: Iterable | None = None,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -72,10 +73,6 @@ class Chain(Linkable):
     async def push(self, datum: Any) -> None:
         """Route pushed data to the first link."""
         await _input_of(self._links[0]).push(datum)
-
-    async def _fill_queue_from_input(self) -> None:
-        """Chain delegates input filling to its first link."""
-        pass
 
     async def run(self) -> None:
         """Run all internal links concurrently under a TaskGroup.
