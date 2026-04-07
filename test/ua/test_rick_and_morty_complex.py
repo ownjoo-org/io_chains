@@ -112,7 +112,7 @@ class TestConcurrentFetchJoinAndEnrich(unittest.IsolatedAsyncioTestCase):
             await gather(
                 create_task(Link(source=fetch_characters_page(client), subscribers=[char_sink])()),
                 create_task(Link(source=fetch_episodes_page(client), subscribers=[episode_sink])()),
-                create_task(Link(source=fetch_locations_page(client), subscribers=[location_sink])()),  # noqa: E501
+                create_task(Link(source=fetch_locations_page(client), subscribers=[location_sink])()),
             )
 
             # --- Join: drain collectors into lookup structures ---
