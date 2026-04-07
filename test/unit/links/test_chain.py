@@ -14,6 +14,7 @@ Design principles under test:
 Limitations intentionally deferred:
   - Fan-in (multiple upstream sources into one downstream link)
 """
+
 import unittest
 from asyncio import create_task, gather
 from collections.abc import AsyncGenerator
@@ -27,42 +28,47 @@ from io_chains.pubsub.collector import Collector
 # Simulated async data sources
 # ---------------------------------------------------------------------------
 
+
 async def source_records() -> AsyncGenerator[dict, None]:
     for record in [
-        {'id': 1, 'name': 'Alice'},
-        {'id': 2, 'name': 'Bob'},
-        {'id': 3, 'name': 'Carol'},
+        {"id": 1, "name": "Alice"},
+        {"id": 2, "name": "Bob"},
+        {"id": 3, "name": "Carol"},
     ]:
         yield record
 
 
 async def enrich_with_score(record: dict) -> dict:
     scores = {1: 95, 2: 87, 3: 72}
-    return {**record, 'score': scores.get(record['id'], 0)}
+    return {**record, "score": scores.get(record["id"], 0)}
 
 
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
 
-class TestChain(unittest.IsolatedAsyncioTestCase):
 
+class TestChain(unittest.IsolatedAsyncioTestCase):
     # --- Instantiation ---
 
     def test_chain_should_instantiate(self):
-        chain = Chain(links=[
-            Link(transformer=lambda x: x * 2),
-            Link(transformer=lambda x: x + 1),
-        ])
+        chain = Chain(
+            links=[
+                Link(transformer=lambda x: x * 2),
+                Link(transformer=lambda x: x + 1),
+            ]
+        )
         self.assertIsInstance(chain, Chain)
 
     def test_chain_should_accept_links_and_chains(self):
         # A Chain can contain Links or other Chains as its elements
         inner = Chain(links=[Link(transformer=lambda x: x * 2)])
-        outer = Chain(links=[
-            Link(transformer=lambda x: x + 1),
-            inner,
-        ])
+        outer = Chain(
+            links=[
+                Link(transformer=lambda x: x + 1),
+                inner,
+            ]
+        )
         self.assertIsInstance(outer, Chain)
 
     # --- Chain as standalone orchestrator ---
@@ -92,11 +98,11 @@ class TestChain(unittest.IsolatedAsyncioTestCase):
         chain = Chain(
             source=[1, 2, 3],
             links=[
-                Link(transformer=lambda x: x + 1),   # 2, 3, 4
-                Link(transformer=lambda x: x * 3),   # 6, 9, 12
-                Link(transformer=lambda x: x - 1),   # 5, 8, 11
-                Link(transformer=lambda x: x * 2),   # 10, 16, 22
-                Link(transformer=str),                # '10', '16', '22'
+                Link(transformer=lambda x: x + 1),  # 2, 3, 4
+                Link(transformer=lambda x: x * 3),  # 6, 9, 12
+                Link(transformer=lambda x: x - 1),  # 5, 8, 11
+                Link(transformer=lambda x: x * 2),  # 10, 16, 22
+                Link(transformer=str),  # '10', '16', '22'
             ],
             subscribers=[results],
         )
@@ -104,7 +110,7 @@ class TestChain(unittest.IsolatedAsyncioTestCase):
         await chain()
 
         actual = [item async for item in results]
-        self.assertEqual(actual, ['10', '16', '22'])
+        self.assertEqual(actual, ["10", "16", "22"])
 
     async def test_chain_fan_out_last_link_to_multiple_subscribers(self):
         # The last link in a Chain can publish to multiple subscribers
@@ -136,15 +142,19 @@ class TestChain(unittest.IsolatedAsyncioTestCase):
         # A Chain whose elements are themselves Chains
         results = Collector()
 
-        normalise = Chain(links=[
-            Link(transformer=lambda x: abs(x)),
-            Link(transformer=lambda x: round(x, 2)),
-        ])
+        normalise = Chain(
+            links=[
+                Link(transformer=lambda x: abs(x)),
+                Link(transformer=lambda x: round(x, 2)),
+            ]
+        )
 
-        stringify = Chain(links=[
-            Link(transformer=lambda x: x * 100),
-            Link(transformer=lambda x: f'{x:.0f}%'),
-        ])
+        stringify = Chain(
+            links=[
+                Link(transformer=lambda x: x * 100),
+                Link(transformer=lambda x: f"{x:.0f}%"),
+            ]
+        )
 
         pipeline = Chain(
             source=[-0.156, 0.999, -0.301],
@@ -155,23 +165,25 @@ class TestChain(unittest.IsolatedAsyncioTestCase):
         await pipeline()
 
         actual = [item async for item in results]
-        self.assertEqual(actual, ['16%', '100%', '30%'])
+        self.assertEqual(actual, ["16%", "100%", "30%"])
 
     async def test_mixed_chain_of_links_and_chains(self):
         # A Chain containing a mix of Links and sub-Chains
         results = Collector()
 
-        middle_chain = Chain(links=[
-            Link(transformer=lambda x: x * 10),
-            Link(transformer=lambda x: x - 1),
-        ])
+        middle_chain = Chain(
+            links=[
+                Link(transformer=lambda x: x * 10),
+                Link(transformer=lambda x: x - 1),
+            ]
+        )
 
         pipeline = Chain(
             source=[1, 2, 3],
             links=[
                 Link(transformer=lambda x: x + 1),  # 2, 3, 4
-                middle_chain,                         # *10-1: 19, 29, 39
-                Link(transformer=str),                # '19', '29', '39'
+                middle_chain,  # *10-1: 19, 29, 39
+                Link(transformer=str),  # '19', '29', '39'
             ],
             subscribers=[results],
         )
@@ -179,7 +191,7 @@ class TestChain(unittest.IsolatedAsyncioTestCase):
         await pipeline()
 
         actual = [item async for item in results]
-        self.assertEqual(actual, ['19', '29', '39'])
+        self.assertEqual(actual, ["19", "29", "39"])
 
     # --- Chain as Linkable (connectable to other Links/Chains) ---
 
@@ -246,7 +258,7 @@ class TestChain(unittest.IsolatedAsyncioTestCase):
         pipeline = Chain(
             source=source_records,
             links=[
-                Link(transformer=lambda r: {**r, 'name': r['name'].upper()}),
+                Link(transformer=lambda r: {**r, "name": r["name"].upper()}),
                 Link(transformer=enrich_with_score),
             ],
             subscribers=[results],
@@ -256,9 +268,9 @@ class TestChain(unittest.IsolatedAsyncioTestCase):
 
         actual = [item async for item in results]
         self.assertEqual(len(actual), 3)
-        self.assertEqual(actual[0], {'id': 1, 'name': 'ALICE', 'score': 95})
-        self.assertEqual(actual[1], {'id': 2, 'name': 'BOB',   'score': 87})
-        self.assertEqual(actual[2], {'id': 3, 'name': 'CAROL', 'score': 72})
+        self.assertEqual(actual[0], {"id": 1, "name": "ALICE", "score": 95})
+        self.assertEqual(actual[1], {"id": 2, "name": "BOB", "score": 87})
+        self.assertEqual(actual[2], {"id": 3, "name": "CAROL", "score": 72})
 
     async def test_reusable_chain_embedded_in_larger_pipeline(self):
         # A packaged sub-pipeline (Chain) reused inside a larger flow.
@@ -266,10 +278,12 @@ class TestChain(unittest.IsolatedAsyncioTestCase):
         results = Collector()
 
         # Reusable sub-pipeline: could be imported from a library
-        normalise_records = Chain(links=[
-            Link(transformer=lambda r: {**r, 'name': r['name'].strip().title()}),
-            Link(transformer=enrich_with_score),
-        ])
+        normalise_records = Chain(
+            links=[
+                Link(transformer=lambda r: {**r, "name": r["name"].strip().title()}),
+                Link(transformer=enrich_with_score),
+            ]
+        )
 
         # Larger pipeline uses it as one step
         full_pipeline = Chain(
@@ -284,8 +298,8 @@ class TestChain(unittest.IsolatedAsyncioTestCase):
         await full_pipeline()
 
         actual = [item async for item in results]
-        self.assertEqual(actual, ['Alice (95)', 'Bob (87)', 'Carol (72)'])
+        self.assertEqual(actual, ["Alice (95)", "Bob (87)", "Carol (72)"])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

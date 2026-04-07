@@ -11,7 +11,7 @@ class TestCallbackSubscriber(unittest.IsolatedAsyncioTestCase):
 
     async def test_should_callback(self):
         sub = CallbackSubscriber(callback=lambda x: x)  # passthrough
-        expected = 'something'
+        expected = "something"
         actual = await sub.push(expected)
         self.assertEqual(expected, actual)
 
@@ -26,10 +26,10 @@ class TestCallbackSubscriber(unittest.IsolatedAsyncioTestCase):
     async def test_should_not_invoke_callback_for_end_of_stream(self):
         received = []
         sub = CallbackSubscriber(callback=lambda x: received.append(x))
-        await sub.push('data')
+        await sub.push("data")
         await sub.push(END_OF_STREAM)
-        self.assertEqual(['data'], received)
+        self.assertEqual(["data"], received)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -11,7 +11,7 @@ logger = getLogger()
 
 
 async def gen_func() -> AsyncGenerator[str, None]:
-    yield 'something'
+    yield "something"
 
 
 class TestLink(unittest.IsolatedAsyncioTestCase):
@@ -27,7 +27,7 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([1, 2, 3], actual)
 
     async def test_link_should_handle_subscriber(self):
-        expected = 'something'
+        expected = "something"
         collector = Collector()
         link = Link(source=[expected], subscribers=[collector])
         await link()
@@ -37,7 +37,7 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(expected, actual)
 
     async def test_link_input_should_generate_from_list(self):
-        expected = 'something'
+        expected = "something"
         link = Link(source=[expected])
         actual = None
         async for each in link.input:
@@ -45,7 +45,7 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(expected, actual)
 
     async def test_link_input_should_generate_from_generator(self):
-        expected = 'something'
+        expected = "something"
         link = Link(source=(x for x in [expected]))
         actual = None
         async for each in link.input:
@@ -53,7 +53,7 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(expected, actual)
 
     async def test_link_input_should_generate_from_async_gen_func(self):
-        expected = 'something'
+        expected = "something"
         link = Link(source=gen_func)
         actual = None
         async for each in link.input:
@@ -67,7 +67,7 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([10, 20, 30], actual)
 
     async def test_link_should_publish_to_all_subscribers(self):
-        expected = 'something'
+        expected = "something"
         sub1 = Collector()
         sub2 = Collector()
         link = Link(source=[expected], subscribers=[sub1, sub2])
@@ -104,7 +104,7 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([10, 20], actual)
 
     async def test_link_should_handle_subscriber_link(self):
-        expected = 'something'
+        expected = "something"
         collector = Collector()
         loader = Link(transformer=lambda x: x, subscribers=[collector])
         extractor = Link(source=gen_func, subscribers=[loader])
@@ -121,13 +121,10 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
         # A bounded queue (queue_size=1) should still produce correct results —
         # the producer blocks until the consumer drains each slot.
         results = Collector()
-        link = Link(
-            source=list(range(5)), transformer=lambda x: x * 2, subscribers=[results], queue_size=1
-        )
+        link = Link(source=list(range(5)), transformer=lambda x: x * 2, subscribers=[results], queue_size=1)
         await link()
         actual = [item async for item in results]
         self.assertEqual([0, 2, 4, 6, 8], actual)
-
 
     # --- Filter / drop ---
 
@@ -166,13 +163,13 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
         results = Collector()
         # Each string is split into individual words
         link = Link(
-            source=['hello world', 'foo bar baz'],
+            source=["hello world", "foo bar baz"],
             transformer=lambda s: (word for word in s.split()),
             subscribers=[results],
         )
         await link()
         actual = [item async for item in results]
-        self.assertEqual(['hello', 'world', 'foo', 'bar', 'baz'], actual)
+        self.assertEqual(["hello", "world", "foo", "bar", "baz"], actual)
 
     async def test_link_transformer_async_generator_expands_items(self):
         results = Collector()
@@ -235,11 +232,12 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
         results = Collector()
         # Drop every second batch
         batches_seen = []
+
         def transformer(batch):
             batches_seen.append(batch)
             return SKIP if len(batches_seen) % 2 == 0 else sum(batch)
-        link = Link(source=list(range(6)), transformer=transformer,
-                    batch_size=2, subscribers=[results])
+
+        link = Link(source=list(range(6)), transformer=transformer, batch_size=2, subscribers=[results])
         await link()
         actual = [item async for item in results]
         # batch[0,1]=1 kept, batch[2,3]=5 dropped, batch[4,5]=9 kept
@@ -262,10 +260,12 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
 
     async def test_link_on_error_skip_continues_stream(self):
         results = Collector()
+
         def bad_transformer(x):
             if x == 2:
-                raise ValueError('bad item')
+                raise ValueError("bad item")
             return x * 10
+
         link = Link(
             source=[1, 2, 3],
             transformer=bad_transformer,
@@ -278,10 +278,12 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
 
     async def test_link_on_error_fallback_value(self):
         results = Collector()
+
         def bad_transformer(x):
             if x == 2:
-                raise ValueError('bad item')
+                raise ValueError("bad item")
             return x * 10
+
         link = Link(
             source=[1, 2, 3],
             transformer=bad_transformer,
@@ -299,8 +301,10 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
 
     async def test_link_on_error_async_handler(self):
         results = Collector()
+
         async def async_handler(e, item):
             return item  # passthrough on error
+
         link = Link(
             source=[1, 2, 3],
             transformer=lambda x: 1 / 0,
@@ -338,8 +342,7 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
     async def test_link_fan_in_with_workers(self):
         # Fan-in combined with concurrent workers
         results = Collector()
-        downstream = Link(transformer=lambda x: x + 100, subscribers=[results],
-                          upstream_count=2, workers=2)
+        downstream = Link(transformer=lambda x: x + 100, subscribers=[results], upstream_count=2, workers=2)
         upstream_a = Link(source=[1, 2], subscribers=[downstream])
         upstream_b = Link(source=[3, 4], subscribers=[downstream])
         await gather(
@@ -368,9 +371,7 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
         # With N workers, downstream should still receive exactly one EOS
         # (i.e., the Collector stops after all items — not N times early or N times EOS)
         results = Collector()
-        link = Link(
-            source=list(range(5)), transformer=lambda x: x, subscribers=[results], workers=4
-        )
+        link = Link(source=list(range(5)), transformer=lambda x: x, subscribers=[results], workers=4)
         await link()
         actual = sorted([item async for item in results])
         self.assertEqual([0, 1, 2, 3, 4], actual)
@@ -387,5 +388,5 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(sorted([0, 3, 6, 9]), actual)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

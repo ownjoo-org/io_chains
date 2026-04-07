@@ -21,6 +21,7 @@ class Relation:
         many:        True → one-to-many (attach list); False → one-to-one (attach single or None).
         key_transform: optional callable applied to each key before lookup.
     """
+
     from_field: str
     to_channel: str
     to_field: str
@@ -120,14 +121,10 @@ class Enricher(Linkable):
                 key_fn = rel.key_transform or (lambda x: x)
                 if rel.many:
                     raw_keys = item.get(rel.from_field, [])
-                    enriched[rel.attach_as] = [
-                        lookup[key_fn(k)] for k in raw_keys if key_fn(k) in lookup
-                    ]
+                    enriched[rel.attach_as] = [lookup[key_fn(k)] for k in raw_keys if key_fn(k) in lookup]
                 else:
                     raw_key = item.get(rel.from_field)
-                    enriched[rel.attach_as] = (
-                        lookup.get(key_fn(raw_key)) if raw_key is not None else None
-                    )
+                    enriched[rel.attach_as] = lookup.get(key_fn(raw_key)) if raw_key is not None else None
             await self.publish(enriched)
 
         await self.publish(END_OF_STREAM)

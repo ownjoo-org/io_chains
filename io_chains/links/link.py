@@ -42,7 +42,7 @@ class Link(Linkable):
         if self._input is None:
             return
         source = self._input() if callable(self._input) else self._input
-        if hasattr(source, '__aiter__'):
+        if hasattr(source, "__aiter__"):
             async for each in source:
                 yield each
         else:
@@ -52,7 +52,7 @@ class Link(Linkable):
     @input.setter
     def input(self, in_obj: AsyncIterable | Callable | Iterable | None) -> None:
         if in_obj is not None and not isinstance(in_obj, (AsyncIterable, Callable, Iterable)):
-            raise TypeError(f'source must be Callable or Iterable, got {type(in_obj)}')
+            raise TypeError(f"source must be Callable or Iterable, got {type(in_obj)}")
         self._input = in_obj
 
     async def _fill_queue_from_input(self) -> None:
@@ -93,7 +93,7 @@ class Link(Linkable):
                 for item in result:
                     await self.publish(item)
                 return
-            elif hasattr(result, '__aiter__'):
+            elif hasattr(result, "__aiter__"):
                 async for item in result:
                     await self.publish(item)
                 return

@@ -12,7 +12,7 @@ class TestEndOfStream(unittest.TestCase):
         self.assertIs(END_OF_STREAM, another)
 
     def test_should_have_readable_repr(self):
-        self.assertEqual(repr(END_OF_STREAM), 'END_OF_STREAM')
+        self.assertEqual(repr(END_OF_STREAM), "END_OF_STREAM")
 
     def test_none_is_not_end_of_stream(self):
         self.assertNotIsInstance(None, EndOfStream)
@@ -28,12 +28,12 @@ class TestSkip(unittest.TestCase):
         self.assertIs(SKIP, another)
 
     def test_should_have_readable_repr(self):
-        self.assertEqual(repr(SKIP), 'SKIP')
+        self.assertEqual(repr(SKIP), "SKIP")
 
     def test_is_distinct_from_end_of_stream(self):
         self.assertIsNot(SKIP, END_OF_STREAM)
         self.assertNotIsInstance(SKIP, EndOfStream)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

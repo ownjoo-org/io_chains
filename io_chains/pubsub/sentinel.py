@@ -1,5 +1,6 @@
 class EndOfStream:
     """Sentinel signalling end of data in a stream. Singleton."""
+
     _instance = None
 
     def __new__(cls):
@@ -8,11 +9,12 @@ class EndOfStream:
         return cls._instance
 
     def __repr__(self):
-        return 'END_OF_STREAM'
+        return "END_OF_STREAM"
 
 
 class Skip:
     """Sentinel returned by a transformer to drop the current item from the stream."""
+
     _instance = None
 
     def __new__(cls):
@@ -21,7 +23,7 @@ class Skip:
         return cls._instance
 
     def __repr__(self):
-        return 'SKIP'
+        return "SKIP"
 
 
 END_OF_STREAM = EndOfStream()

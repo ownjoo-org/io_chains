@@ -34,7 +34,26 @@
       "Bash(ls .venv/Scripts/*.exe)",
       "Bash(python -m pip show pytest)",
       "Bash(python -c \"import sys; print\\(sys.executable\\)\")",
-      "Bash(C:/Users/eq_fu/AppData/Local/Python/pythoncore-3.14-64/python.exe:*)"
+      "Bash(C:/Users/eq_fu/AppData/Local/Python/pythoncore-3.14-64/python.exe:*)",
+      "Bash(python -m pytest test/unit/links/test_enricher.py -v)",
+      "Bash(python -m pytest test/ua/ -v)",
+      "Bash(python -m ruff check .)",
+      "Bash(python -m flake8 io_chains/ test/)",
+      "Bash(python -m isort --check-only --diff io_chains/ test/)",
+      "Bash(python -m pyflakes io_chains/ test/)",
+      "Bash(python -c ':*)",
+      "Bash(python -m isort io_chains/ test/)",
+      "Bash(python -m pytest test/unit/ -q)",
+      "Bash(python -m isort --check-only io_chains/ test/)",
+      "Bash(python -c \"import sys; print\\(sys.version\\)\")",
+      "Bash(python -m ruff --show-settings)",
+      "Bash(python -m ruff config)",
+      "Bash(python -m ruff check --help)",
+      "Bash(python -m pytest --co -q)",
+      "Bash(python -m pytest --co)",
+      "Bash(python -m ruff check io_chains/ test/)",
+      "Bash(python -m ruff format --check io_chains/ test/)",
+      "Bash(python -m ruff format io_chains/ test/)"
     ]
   }
 }

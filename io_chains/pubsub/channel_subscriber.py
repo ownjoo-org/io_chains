@@ -15,7 +15,7 @@ class ChannelSubscriber(Subscriber):
         self._subscriber = subscriber
         self._channel = channel
         # If the downstream subscriber tracks upstream count (e.g. Enricher), notify it
-        if hasattr(subscriber, '_register_upstream'):
+        if hasattr(subscriber, "_register_upstream"):
             subscriber._register_upstream()
 
     async def push(self, datum: Any) -> None:
