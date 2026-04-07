@@ -489,4 +489,10 @@ python -m pytest test/unit -v
 
 # Run user acceptance tests (requires network)
 python -m pytest test/ua -v
+
+# Lint
+python -m ruff check io_chains/ test/
+
+# Format
+python -m ruff format io_chains/ test/
 ```
