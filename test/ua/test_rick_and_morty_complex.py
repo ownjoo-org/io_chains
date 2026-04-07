@@ -112,13 +112,13 @@ class TestConcurrentFetchJoinAndEnrich(unittest.IsolatedAsyncioTestCase):
             await gather(
                 create_task(Link(source=fetch_characters_page(client), subscribers=[char_sink])()),
                 create_task(Link(source=fetch_episodes_page(client), subscribers=[episode_sink])()),
-                create_task(Link(source=fetch_locations_page(client), subscribers=[location_sink])()),
+                create_task(Link(source=fetch_locations_page(client), subscribers=[location_sink])()),  # noqa: E501
             )
 
             # --- Join: drain collectors into lookup structures ---
             chars = [c async for c in char_sink]
             episode_lookup = {e['id']: e async for e in episode_sink}
-            location_lookup = {l['id']: l async for l in location_sink}
+            location_lookup = {loc['id']: loc async for loc in location_sink}
 
             # --- Phase 2: enrich first 2 characters ---
             results = Collector()

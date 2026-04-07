@@ -20,3 +20,22 @@ dependencies = [
 
 [project.urls]
 Repository = "https://github.com/ownjoo-org/io-chains"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes (unused imports, undefined names, etc.)
+    "I",      # isort
+    "UP",     # pyupgrade (modernise syntax for target Python version)
+    "B",      # flake8-bugbear (common bug patterns)
+    "ASYNC",  # flake8-async (async best practices)
+    "RUF",    # ruff-specific rules
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["io_chains"]

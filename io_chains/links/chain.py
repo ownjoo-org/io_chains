@@ -13,7 +13,10 @@ def _output_of(linkable: Linkable) -> Linkable:
 
 
 def _input_of(linkable: Linkable) -> Linkable:
-    """Return the linkable that receives pushed input: for a Chain, its first link; for a Link, itself."""
+    """Return the linkable that receives pushed input.
+
+    For a Chain this is its first link; for a Link, the link itself.
+    """
     if isinstance(linkable, Chain):
         return _input_of(linkable._links[0])
     return linkable

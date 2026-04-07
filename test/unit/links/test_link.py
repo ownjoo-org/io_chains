@@ -121,7 +121,9 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
         # A bounded queue (queue_size=1) should still produce correct results —
         # the producer blocks until the consumer drains each slot.
         results = Collector()
-        link = Link(source=list(range(5)), transformer=lambda x: x * 2, subscribers=[results], queue_size=1)
+        link = Link(
+            source=list(range(5)), transformer=lambda x: x * 2, subscribers=[results], queue_size=1
+        )
         await link()
         actual = [item async for item in results]
         self.assertEqual([0, 2, 4, 6, 8], actual)
@@ -240,7 +242,8 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
                     batch_size=2, subscribers=[results])
         await link()
         actual = [item async for item in results]
-        self.assertEqual([1, 9], actual)  # batch[0,1]=1 kept, batch[2,3]=5 dropped, batch[4,5]=9 kept
+        # batch[0,1]=1 kept, batch[2,3]=5 dropped, batch[4,5]=9 kept
+        self.assertEqual([1, 9], actual)
 
     async def test_link_batch_transformer_can_flat_map(self):
         results = Collector()
@@ -365,7 +368,9 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
         # With N workers, downstream should still receive exactly one EOS
         # (i.e., the Collector stops after all items — not N times early or N times EOS)
         results = Collector()
-        link = Link(source=list(range(5)), transformer=lambda x: x, subscribers=[results], workers=4)
+        link = Link(
+            source=list(range(5)), transformer=lambda x: x, subscribers=[results], workers=4
+        )
         await link()
         actual = sorted([item async for item in results])
         self.assertEqual([0, 1, 2, 3, 4], actual)

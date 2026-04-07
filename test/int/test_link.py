@@ -33,7 +33,9 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
             transformer=get_json,
             subscribers=[
                 results,
-                CallbackSubscriber(callback=lambda value: print(f'API response: {list(value.keys())}')),
+                CallbackSubscriber(
+                    callback=lambda value: print(f'API response: {list(value.keys())}')
+                ),
             ],
         )
 

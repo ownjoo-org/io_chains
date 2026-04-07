@@ -1,6 +1,7 @@
+from collections.abc import Callable
 from inspect import isawaitable
 from logging import getLogger
-from typing import Any, Callable
+from typing import Any
 
 from io_chains.pubsub.sentinel import EndOfStream
 from io_chains.pubsub.subscriber import Subscriber

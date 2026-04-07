@@ -1,4 +1,3 @@
-from abc import ABC
 from asyncio import TaskGroup
 from collections.abc import Iterable
 from typing import Any
@@ -6,7 +5,7 @@ from typing import Any
 from io_chains.pubsub.subscriber import Subscriber
 
 
-class Publisher(ABC):
+class Publisher:
     def __init__(
         self,
         *args,

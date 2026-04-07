@@ -125,7 +125,9 @@ class Enricher(Linkable):
                     ]
                 else:
                     raw_key = item.get(rel.from_field)
-                    enriched[rel.attach_as] = lookup.get(key_fn(raw_key)) if raw_key is not None else None
+                    enriched[rel.attach_as] = (
+                        lookup.get(key_fn(raw_key)) if raw_key is not None else None
+                    )
             await self.publish(enriched)
 
         await self.publish(END_OF_STREAM)
