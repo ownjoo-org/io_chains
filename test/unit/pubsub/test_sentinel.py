@@ -1,6 +1,6 @@
 import unittest
 
-from io_chains.pubsub.sentinel import END_OF_STREAM, EndOfStream
+from io_chains.pubsub.sentinel import END_OF_STREAM, EndOfStream, SKIP, Skip
 
 
 class TestEndOfStream(unittest.TestCase):
@@ -17,6 +17,22 @@ class TestEndOfStream(unittest.TestCase):
     def test_none_is_not_end_of_stream(self):
         self.assertNotIsInstance(None, EndOfStream)
         self.assertIsNot(None, END_OF_STREAM)
+
+
+class TestSkip(unittest.TestCase):
+    def test_should_be_instance_of_skip(self):
+        self.assertIsInstance(SKIP, Skip)
+
+    def test_should_be_singleton(self):
+        another = Skip()
+        self.assertIs(SKIP, another)
+
+    def test_should_have_readable_repr(self):
+        self.assertEqual(repr(SKIP), 'SKIP')
+
+    def test_is_distinct_from_end_of_stream(self):
+        self.assertIsNot(SKIP, END_OF_STREAM)
+        self.assertNotIsInstance(SKIP, EndOfStream)
 
 
 if __name__ == '__main__':

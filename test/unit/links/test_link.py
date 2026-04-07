@@ -5,7 +5,7 @@ from logging import getLogger
 
 from io_chains.links.link import Link
 from io_chains.pubsub.collector import Collector
-from io_chains.pubsub.sentinel import END_OF_STREAM
+from io_chains.pubsub.sentinel import END_OF_STREAM, SKIP
 
 logger = getLogger()
 
@@ -125,6 +125,110 @@ class TestLink(unittest.IsolatedAsyncioTestCase):
         await link()
         actual = [item async for item in results]
         self.assertEqual([0, 2, 4, 6, 8], actual)
+
+
+    # --- Filter / drop ---
+
+    async def test_link_transformer_returning_skip_drops_item(self):
+        results = Collector()
+        link = Link(
+            source=[1, 2, 3, 4, 5],
+            transformer=lambda x: SKIP if x % 2 == 0 else x,
+            subscribers=[results],
+        )
+        await link()
+        actual = [item async for item in results]
+        self.assertEqual([1, 3, 5], actual)
+
+    async def test_link_transformer_skip_all_produces_empty_stream(self):
+        results = Collector()
+        link = Link(source=[1, 2, 3], transformer=lambda x: SKIP, subscribers=[results])
+        await link()
+        actual = [item async for item in results]
+        self.assertEqual([], actual)
+
+    async def test_link_async_transformer_can_return_skip(self):
+        results = Collector()
+
+        async def keep_evens(x):
+            return x if x % 2 == 0 else SKIP
+
+        link = Link(source=[1, 2, 3, 4], transformer=keep_evens, subscribers=[results])
+        await link()
+        actual = [item async for item in results]
+        self.assertEqual([2, 4], actual)
+
+    # --- Flat-map / expand ---
+
+    async def test_link_transformer_sync_generator_expands_items(self):
+        results = Collector()
+        # Each string is split into individual words
+        link = Link(
+            source=['hello world', 'foo bar baz'],
+            transformer=lambda s: (word for word in s.split()),
+            subscribers=[results],
+        )
+        await link()
+        actual = [item async for item in results]
+        self.assertEqual(['hello', 'world', 'foo', 'bar', 'baz'], actual)
+
+    async def test_link_transformer_async_generator_expands_items(self):
+        results = Collector()
+
+        async def expand(n):
+            for i in range(n):
+                yield i
+
+        link = Link(source=[3, 2], transformer=expand, subscribers=[results])
+        await link()
+        actual = [item async for item in results]
+        self.assertEqual([0, 1, 2, 0, 1], actual)
+
+    async def test_link_transformer_generator_returning_zero_items_filters(self):
+        # A generator that yields nothing is equivalent to SKIP
+        results = Collector()
+        link = Link(
+            source=[1, 2, 3],
+            transformer=lambda x: (i for i in [] if False),  # always empty
+            subscribers=[results],
+        )
+        await link()
+        actual = [item async for item in results]
+        self.assertEqual([], actual)
+
+    # --- Concurrent workers ---
+
+    async def test_link_workers_produces_correct_results(self):
+        results = Collector()
+        link = Link(
+            source=list(range(10)),
+            transformer=lambda x: x * 2,
+            subscribers=[results],
+            workers=3,
+        )
+        await link()
+        actual = sorted([item async for item in results])
+        self.assertEqual(sorted([x * 2 for x in range(10)]), actual)
+
+    async def test_link_workers_eos_propagates_exactly_once(self):
+        # With N workers, downstream should still receive exactly one EOS
+        # (i.e., the Collector stops after all items — not N times early or N times EOS)
+        results = Collector()
+        link = Link(source=list(range(5)), transformer=lambda x: x, subscribers=[results], workers=4)
+        await link()
+        actual = sorted([item async for item in results])
+        self.assertEqual([0, 1, 2, 3, 4], actual)
+
+    async def test_link_workers_subscriber_only_mode(self):
+        # Multi-worker subscriber-only link — upstream sends EOS once, workers share it
+        results = Collector()
+        link = Link(transformer=lambda x: x * 3, subscribers=[results], workers=2)
+        for i in range(4):
+            await link.push(i)
+        await link.push(END_OF_STREAM)
+        await link()
+        actual = sorted([item async for item in results])
+        self.assertEqual(sorted([0, 3, 6, 9]), actual)
 
 
 if __name__ == '__main__':

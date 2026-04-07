@@ -1,10 +1,10 @@
-from asyncio import Queue, TaskGroup
-from inspect import isawaitable
+from asyncio import Lock, Queue, TaskGroup
+from inspect import isawaitable, isgenerator
 from logging import getLogger
 from typing import Any, AsyncGenerator, AsyncIterable, Callable, Iterable, Optional, Union
 
 from io_chains.links.linkable import Linkable
-from io_chains.pubsub.sentinel import END_OF_STREAM, EndOfStream
+from io_chains.pubsub.sentinel import END_OF_STREAM, EndOfStream, SKIP, Skip
 
 logger = getLogger(__name__)
 
@@ -16,6 +16,7 @@ class Link(Linkable):
         source: Union[Callable, Iterable, None] = None,
         transformer: Optional[Callable] = None,
         queue_size: int = 0,
+        workers: int = 1,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -26,6 +27,8 @@ class Link(Linkable):
         self.transformer = transformer
 
         self._queue: Queue = Queue(maxsize=queue_size)
+        self._workers: int = max(1, workers)
+        self._active_workers: int = self._workers
 
     @property
     async def input(self) -> AsyncGenerator:
@@ -60,23 +63,52 @@ class Link(Linkable):
             await self.push(END_OF_STREAM)
         # else: subscriber-only mode — EOS arrives via push() from upstream
 
-    async def _update_subscribers(self) -> None:
+    async def _worker(self, lock: Lock) -> None:
         while True:
             datum: Any = await self._queue.get()
-            if self._transformer and not isinstance(datum, EndOfStream):
-                result = self._transformer(datum)
-                datum = await result if isawaitable(result) else result
-            await self.publish(datum)
+
             if isinstance(datum, EndOfStream):
+                async with lock:
+                    self._active_workers -= 1
+                    if self._active_workers == 0:
+                        await self.publish(END_OF_STREAM)
                 break
 
+            if self._transformer:
+                result = self._transformer(datum)
+                if isawaitable(result):
+                    result = await result
+
+                if isinstance(result, Skip):
+                    continue
+                elif isgenerator(result):
+                    for item in result:
+                        await self.publish(item)
+                    continue
+                elif hasattr(result, '__aiter__'):
+                    async for item in result:
+                        await self.publish(item)
+                    continue
+                else:
+                    datum = result
+
+            await self.publish(datum)
+
     async def push(self, datum: Any) -> None:
-        await self._queue.put(datum)
+        if isinstance(datum, EndOfStream) and self._workers > 1:
+            # Each worker needs its own EOS token to shut down cleanly
+            for _ in range(self._workers):
+                await self._queue.put(datum)
+        else:
+            await self._queue.put(datum)
 
     async def run(self) -> None:
+        self._active_workers = self._workers
+        lock = Lock()
         async with TaskGroup() as tg:
             tg.create_task(self._fill_queue_from_input())
-            tg.create_task(self._update_subscribers())
+            for _ in range(self._workers):
+                tg.create_task(self._worker(lock))
 
     async def __call__(self) -> None:
         await self.run()
