@@ -10,7 +10,7 @@ Topology:
     fetch_episodes   ─ subscribe(enricher, channel='episodes')─┤ Enricher
     fetch_locations  ─ subscribe(enricher, channel='locations')┘
                                    ↓
-                          Limit(2) as transformer
+                          Limit(2) as processor
                                    ↓
                                results Collector
 """
@@ -21,9 +21,9 @@ from asyncio import create_task, gather
 from httpx import AsyncClient
 
 from io_chains.links.enricher import Enricher, Relation
-from io_chains.links.limit import Limit
-from io_chains.links.link import Link
-from io_chains.pubsub.collector import Collector
+from io_chains.links.processor import Processor
+from test.helpers.limit import Limit
+from io_chains.links.collector import Collector
 
 BASE_URL = "https://rickandmortyapi.com/api"
 
@@ -71,7 +71,7 @@ class TestEnricherPipeline(unittest.IsolatedAsyncioTestCase):
         """
         Demonstrates the declarative enrichment pipeline.
 
-        Characters arrive in their raw API form. Two normalization Links add
+        Characters arrive in their raw API form. Two normalization Processors add
         integer FK fields (location_id, episode_ids) needed by the Relations.
         The Enricher collects all side channels then enriches and streams primaries.
         Limit(2) caps the output to the first two characters.
@@ -100,23 +100,23 @@ class TestEnricherPipeline(unittest.IsolatedAsyncioTestCase):
             enricher = Enricher(
                 relations=relations,
                 primary_channel="chars",
-                subscribers=[Link(transformer=Limit(2), subscribers=[results])],
+                subscribers=[Processor(processor=Limit(2), subscribers=[results])],
             )
 
             # Normalize character FK fields before they reach the Enricher
-            char_normalizer = Link(
+            char_normalizer = Processor(
                 source=fetch_characters_page(client),
-                transformer=lambda c: normalize_location_id(normalize_episode_ids(c)),
+                processor=lambda c: normalize_location_id(normalize_episode_ids(c)),
             )
             char_normalizer.subscribe(enricher, channel="chars")
 
-            episode_link = Link(source=fetch_episodes_page(client))
+            episode_link = Processor(source=fetch_episodes_page(client))
             episode_link.subscribe(enricher, channel="episodes")
 
-            location_link = Link(source=fetch_locations_page(client))
+            location_link = Processor(source=fetch_locations_page(client))
             location_link.subscribe(enricher, channel="locations")
 
-            limit_link = enricher._subscribers[0]  # the Limit link
+            limit_link = enricher._subscribers[0]  # the Limit processor
 
             await gather(
                 create_task(char_normalizer()),

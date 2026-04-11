@@ -21,8 +21,8 @@ from asyncio import create_task, gather
 
 from httpx import AsyncClient
 
-from io_chains.links.link import Link
-from io_chains.pubsub.collector import Collector
+from io_chains.links.processor import Processor
+from io_chains.links.collector import Collector
 
 BASE_URL = "https://rickandmortyapi.com/api"
 
@@ -93,7 +93,7 @@ def enrich_character(
 class TestConcurrentFetchJoinAndEnrich(unittest.IsolatedAsyncioTestCase):
     async def test_concurrent_fetch_join_and_enrich_first_two(self):
         """
-        Phase 1 — three Links run concurrently, each draining into a Collector:
+        Phase 1 — three Processors run concurrently, each draining into a Collector:
             fetch_characters | fetch_episodes | fetch_locations
 
         Phase 2 — after ALL three complete (the join):
@@ -113,9 +113,9 @@ class TestConcurrentFetchJoinAndEnrich(unittest.IsolatedAsyncioTestCase):
             location_sink = Collector()
 
             await gather(
-                create_task(Link(source=fetch_characters_page(client), subscribers=[char_sink])()),
-                create_task(Link(source=fetch_episodes_page(client), subscribers=[episode_sink])()),
-                create_task(Link(source=fetch_locations_page(client), subscribers=[location_sink])()),
+                create_task(Processor(source=fetch_characters_page(client), subscribers=[char_sink])()),
+                create_task(Processor(source=fetch_episodes_page(client), subscribers=[episode_sink])()),
+                create_task(Processor(source=fetch_locations_page(client), subscribers=[location_sink])()),
             )
 
             # --- Join: drain collectors into lookup structures ---
@@ -125,9 +125,9 @@ class TestConcurrentFetchJoinAndEnrich(unittest.IsolatedAsyncioTestCase):
 
             # --- Phase 2: enrich first 2 characters ---
             results = Collector()
-            await Link(
+            await Processor(
                 source=chars[:2],
-                transformer=lambda c: enrich_character(c, episode_lookup, location_lookup),
+                processor=lambda c: enrich_character(c, episode_lookup, location_lookup),
                 subscribers=[results],
             )()
 

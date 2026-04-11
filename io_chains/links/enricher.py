@@ -1,11 +1,9 @@
-from asyncio import Queue
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
 
-from io_chains.links.linkable import Linkable
-from io_chains.pubsub.envelope import Envelope
-from io_chains.pubsub.sentinel import END_OF_STREAM, EndOfStream
+from io_chains._internal.link import Link
+from io_chains._internal.envelope import Envelope
+from io_chains._internal.sentinel import END_OF_STREAM, EndOfStream, Skip
 
 
 @dataclass
@@ -30,7 +28,7 @@ class Relation:
     key_transform: Callable | None = None
 
 
-class Enricher(Linkable):
+class Enricher(Link):
     """
     Collects all side-channel items first, then streams primary items enriched
     via the declared Relations.
@@ -58,30 +56,11 @@ class Enricher(Linkable):
         *args,
         relations: list[Relation],
         primary_channel: str,
-        queue_size: int = 0,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
         self._relations = relations
         self._primary_channel = primary_channel
-        self._queue: Queue = Queue(maxsize=queue_size)
-        self._upstream_count: int = 0  # set automatically as channels are subscribed
-        self._eos_received: int = 0
-
-    # ------------------------------------------------------------------ push
-
-    async def push(self, datum: Any) -> None:
-        if isinstance(datum, EndOfStream):
-            # asyncio is single-threaded; no yield between increment and check
-            self._eos_received += 1
-            if self._eos_received >= self._upstream_count:
-                await self._queue.put(datum)
-        else:
-            await self._queue.put(datum)
-
-    def _register_upstream(self) -> None:
-        """Called by ChannelSubscriber when wiring to register one upstream channel."""
-        self._upstream_count += 1
 
     # ------------------------------------------------------------------ input (unused)
 
@@ -93,6 +72,8 @@ class Enricher(Linkable):
     # ------------------------------------------------------------------ run
 
     async def run(self) -> None:
+        self._reset_metrics()
+
         # Partition incoming Envelopes into per-channel lists
         side_channels: dict[str, list] = {}
         primary_items: list = []
@@ -115,19 +96,29 @@ class Enricher(Linkable):
 
         # Enrich and publish primary items
         for item in primary_items:
-            enriched = dict(item)
-            for rel in self._relations:
-                lookup = lookups.get(rel.to_channel, {})
-                key_fn = rel.key_transform or (lambda x: x)
-                if rel.many:
-                    raw_keys = item.get(rel.from_field, [])
-                    enriched[rel.attach_as] = [lookup[key_fn(k)] for k in raw_keys if key_fn(k) in lookup]
+            try:
+                enriched = dict(item)
+                for rel in self._relations:
+                    lookup = lookups.get(rel.to_channel, {})
+                    key_fn = rel.key_transform or (lambda x: x)
+                    if rel.many:
+                        raw_keys = item.get(rel.from_field, [])
+                        enriched[rel.attach_as] = [lookup[key_fn(k)] for k in raw_keys if key_fn(k) in lookup]
+                    else:
+                        raw_key = item.get(rel.from_field)
+                        enriched[rel.attach_as] = lookup.get(key_fn(raw_key)) if raw_key is not None else None
+            except Exception as e:
+                self._items_errored += 1
+                if self._on_error is not None:
+                    result = self._on_error(e, item)
+                    if hasattr(result, "__await__"):
+                        result = await result
+                    if result is None or isinstance(result, Skip):
+                        continue
+                    enriched = result
                 else:
-                    raw_key = item.get(rel.from_field)
-                    enriched[rel.attach_as] = lookup.get(key_fn(raw_key)) if raw_key is not None else None
+                    raise
             await self.publish(enriched)
 
         await self.publish(END_OF_STREAM)
-
-    async def __call__(self) -> None:
-        await self.run()
+        await self._emit_metrics()

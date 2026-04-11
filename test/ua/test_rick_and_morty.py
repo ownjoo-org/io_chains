@@ -20,8 +20,8 @@ from collections.abc import AsyncGenerator
 from httpx import AsyncClient
 
 from io_chains.links.chain import Chain
-from io_chains.links.link import Link
-from io_chains.pubsub.collector import Collector
+from io_chains.links.processor import Processor
+from io_chains.links.collector import Collector
 
 BASE_URL = "https://rickandmortyapi.com/api"
 MAX_EPISODES_PER_CHARACTER = 3
@@ -44,7 +44,7 @@ async def fetch_characters() -> AsyncGenerator[dict, None]:
 
 
 # ---------------------------------------------------------------------------
-# Pipeline factory — builds transformers sharing one client
+# Pipeline factory — builds processors sharing one client
 # ---------------------------------------------------------------------------
 
 
@@ -74,8 +74,8 @@ def build_pipeline(results: Collector, client: AsyncClient) -> Chain:
     return Chain(
         source=fetch_characters,
         links=[
-            Link(transformer=enrich_with_location),
-            Link(transformer=enrich_with_episodes),
+            Processor(processor=enrich_with_location),
+            Processor(processor=enrich_with_episodes),
         ],
         subscribers=[results],
     )

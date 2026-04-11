@@ -1,18 +1,22 @@
 from asyncio import TaskGroup
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from typing import Any
 
-from io_chains.pubsub.subscriber import Subscriber
+from io_chains._internal.subscriber import Subscriber
 
 
 class Publisher:
     def __init__(
         self,
         *args,
+        name: str = "",
         subscribers: "Subscriber | Iterable[Subscriber] | None" = None,
+        on_metrics: Callable | None = None,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
+        self.name: str = name
+        self._on_metrics: Callable | None = on_metrics
         self._subscribers: list[Subscriber] = []
         self.subscribers = subscribers
 
@@ -26,11 +30,15 @@ class Publisher:
             return
         if isinstance(subscribers, Subscriber):
             self._subscribers.append(subscribers)
+            if hasattr(subscribers, "_register_upstream"):
+                subscribers._register_upstream()
         elif isinstance(subscribers, Iterable):
             for subscriber in subscribers:
                 if not isinstance(subscriber, Subscriber):
                     raise TypeError(f"each subscriber must be a Subscriber, got {type(subscriber)}")
                 self._subscribers.append(subscriber)
+                if hasattr(subscriber, "_register_upstream"):
+                    subscriber._register_upstream()
         else:
             raise TypeError("subscribers must be a Subscriber or Iterable[Subscriber]")
 
@@ -41,9 +49,13 @@ class Publisher:
         subscribe(sub, channel='x')  — wraps each item in Envelope(data, channel='x')
         """
         if channel is not None:
-            from io_chains.pubsub.channel_subscriber import ChannelSubscriber
+            from io_chains._internal.channel_subscriber import ChannelSubscriber
 
+            # ChannelSubscriber.__init__ calls subscriber._register_upstream() if present
             subscriber = ChannelSubscriber(subscriber=subscriber, channel=channel)
+        else:
+            if hasattr(subscriber, "_register_upstream"):
+                subscriber._register_upstream()
         self._subscribers.append(subscriber)
 
     async def publish(self, datum: Any) -> None:

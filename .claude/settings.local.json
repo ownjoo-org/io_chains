@@ -53,7 +53,31 @@
       "Bash(python -m pytest --co)",
       "Bash(python -m ruff check io_chains/ test/)",
       "Bash(python -m ruff format --check io_chains/ test/)",
-      "Bash(python -m ruff format io_chains/ test/)"
+      "Bash(python -m ruff format io_chains/ test/)",
+      "Bash(python -m pytest test/unit/ test/ua/ -v)",
+      "Bash(python -m pytest test/unit/ -v)",
+      "Bash(python -m pytest test/unit/ -q --ignore=test/unit/links/test_chain.py)",
+      "Bash(cat \"C:/Users/eq_fu/Documents/work/PycharmProjects/fast_etl/.github/workflows\"/*.yml)",
+      "Bash(python -m pytest test/unit/interfaces/test_observability.py -q)",
+      "Bash(python -m pytest test/unit/interfaces/test_error_handling.py -q)",
+      "Bash(python -m pytest test/unit/interfaces/test_error_handling.py test/unit/interfaces/test_observability.py test/unit/ -q)",
+      "Bash(python -m pytest test/unit/chains/test_pipeline.py -q)",
+      "Bash(python -m pytest test/unit/interfaces/test_graceful_shutdown.py -q --timeout=10)",
+      "Bash(python -m pytest test/unit/interfaces/test_graceful_shutdown.py -q)",
+      "Bash(xargs cat:*)",
+      "Bash(python -m pytest test/unit/links/test_processor.py -q)",
+      "Bash(sed -i 's|from io_chains.pubsub.sentinel import|from io_chains._internal.sentinel import|g' /c/Users/eq_fu/Documents/work/PycharmProjects/io_chains/test/helpers/limit.py /c/Users/eq_fu/Documents/work/PycharmProjects/io_chains/test/unit/links/test_processor.py /c/Users/eq_fu/Documents/work/PycharmProjects/io_chains/test/unit/links/test_enricher.py /c/Users/eq_fu/Documents/work/PycharmProjects/io_chains/test/unit/interfaces/test_error_handling.py /c/Users/eq_fu/Documents/work/PycharmProjects/io_chains/test/unit/interfaces/test_observability.py /c/Users/eq_fu/Documents/work/PycharmProjects/io_chains/test/unit/pubsub/test_callback_subscriber.py /c/Users/eq_fu/Documents/work/PycharmProjects/io_chains/test/unit/pubsub/test_collector.py /c/Users/eq_fu/Documents/work/PycharmProjects/io_chains/test/unit/pubsub/test_publisher.py /c/Users/eq_fu/Documents/work/PycharmProjects/io_chains/test/unit/pubsub/test_sentinel.py)",
+      "Bash(sed -i 's|from io_chains.pubsub.envelope import|from io_chains._internal.envelope import|g' /c/Users/eq_fu/Documents/work/PycharmProjects/io_chains/test/unit/links/test_enricher.py)",
+      "Bash(sed -i 's|from io_chains.interfaces.publisher import|from io_chains._internal.publisher import|g' /c/Users/eq_fu/Documents/work/PycharmProjects/io_chains/test/unit/pubsub/test_publisher.py)",
+      "Bash(sed -i 's|from io_chains.chains.chain import|from io_chains.links.chain import|g' /c/Users/eq_fu/Documents/work/PycharmProjects/io_chains/test/unit/links/test_chain.py /c/Users/eq_fu/Documents/work/PycharmProjects/io_chains/test/ua/test_rick_and_morty.py)",
+      "Bash(sed -i 's|from io_chains.chains.pipeline import|from io_chains.links.pipeline import|g' /c/Users/eq_fu/Documents/work/PycharmProjects/io_chains/test/unit/chains/test_pipeline.py /c/Users/eq_fu/Documents/work/PycharmProjects/io_chains/test/unit/interfaces/test_graceful_shutdown.py)",
+      "Bash(python -m pytest test/unit/links/test_chain.py -q)",
+      "Bash(sed -i 's|from io_chains.links.pipeline import Pipeline|from io_chains.links.chain import Chain|g' /c/Users/eq_fu/Documents/work/PycharmProjects/io_chains/test/unit/interfaces/test_graceful_shutdown.py)",
+      "Bash(sed -i 's|Pipeline\\(links=\\\\[|Chain\\(links=[|g; s|Pipeline\\(links=\\\\[|Chain\\(links=[|g' /c/Users/eq_fu/Documents/work/PycharmProjects/io_chains/test/unit/interfaces/test_graceful_shutdown.py)",
+      "Bash(sed -i 's|Chain\\(links=\\\\[\\\\\\(.*\\\\\\)\\\\]\\)|Chain\\(links=[\\\\1], wire=False\\)|g' /c/Users/eq_fu/Documents/work/PycharmProjects/io_chains/test/unit/interfaces/test_graceful_shutdown.py)",
+      "Bash(python:*)",
+      "Bash(sed -i 's/from links\\\\.collector import Collector/from io_chains.links.collector import Collector/g' test/unit/_internal/test_publisher.py test/ua/test_rick_and_morty.py test/ua/test_rick_and_morty_enricher.py test/ua/test_processor_ua.py test/ua/test_rick_and_morty_complex.py test/unit/links/test_chain.py test/unit/links/test_error_handling.py test/unit/links/test_enricher.py test/unit/links/test_processor.py test/unit/links/test_collector.py test/unit/links/test_observability.py test/unit/links/test_graceful_shutdown.py)",
+      "Bash(sed -i 's/from links\\\\.callback_link import CallbackLink/from io_chains.links.callback_link import CallbackLink/g' test/ua/test_processor_ua.py)"
     ]
   }
 }

@@ -2,29 +2,26 @@ from asyncio import TaskGroup
 from collections.abc import AsyncGenerator, Callable, Iterable
 from typing import Any
 
-from io_chains.links.linkable import Linkable
+from io_chains._internal.linkable import Linkable
 
 
-def _output_of(linkable: Linkable) -> Linkable:
-    """Return the linkable that publishes output: for a Chain, its last link; for a Link, itself."""
-    if isinstance(linkable, Chain):
-        return _output_of(linkable._links[-1])
-    return linkable
+def _output_of(link: Linkable) -> Linkable:
+    """Return the link that publishes output: for a Chain, its last link; otherwise itself."""
+    if isinstance(link, Chain):
+        return _output_of(link._links[-1])
+    return link
 
 
-def _input_of(linkable: Linkable) -> Linkable:
-    """Return the linkable that receives pushed input.
-
-    For a Chain this is its first link; for a Link, the link itself.
-    """
-    if isinstance(linkable, Chain):
-        return _input_of(linkable._links[0])
-    return linkable
+def _input_of(link: Linkable) -> Linkable:
+    """Return the link that receives pushed input: for a Chain, its first link; otherwise itself."""
+    if isinstance(link, Chain):
+        return _input_of(link._links[0])
+    return link
 
 
 class Chain(Linkable):
     """
-    An ordered sequence of Linkables that runs as a single unit.
+    An ordered sequence of Links that runs as a single unit.
 
     Chain is the orchestrator: it wires its internal links together,
     manages their concurrent execution, and presents itself as a single
@@ -35,7 +32,7 @@ class Chain(Linkable):
       - Publishes output through its last link's subscribers
       - await chain() runs the whole pipeline; no external gather() needed
 
-    A Chain's elements can be Links or other Chains.
+    A Chain's elements can be Links, Enrichers, or other Chains.
     """
 
     def __init__(
@@ -49,7 +46,7 @@ class Chain(Linkable):
         super().__init__(*args, **kwargs)
         self._links: list[Linkable] = links
 
-        # Wire each linkable's output to the next linkable's input
+        # Wire each link's output to the next link's input
         for i in range(len(links) - 1):
             _output_of(links[i]).subscribers = [links[i + 1]]
 
@@ -58,6 +55,12 @@ class Chain(Linkable):
 
         if subscribers is not None:
             _output_of(links[-1]).subscribers = subscribers
+
+    def _register_upstream(self) -> None:
+        """Delegate upstream registration to the first link (supports fan-in to a Chain)."""
+        first = _input_of(self._links[0])
+        if hasattr(first, "_register_upstream"):
+            first._register_upstream()
 
     # --- Linkable interface ---
 
@@ -79,9 +82,14 @@ class Chain(Linkable):
     async def run(self) -> None:
         """Run all internal links concurrently under a TaskGroup.
         Callers just await chain() — no external gather() or create_task() needed."""
-        async with TaskGroup() as tg:
-            for link in self._links:
-                tg.create_task(link())
+        try:
+            async with TaskGroup() as tg:
+                for link in self._links:
+                    tg.create_task(link())
+        except ExceptionGroup as eg:
+            if len(eg.exceptions) == 1:
+                raise eg.exceptions[0]
+            raise
 
     async def __call__(self) -> None:
         await self.run()

@@ -1,8 +1,8 @@
 import unittest
 
-from io_chains.pubsub.collector import Collector
-from io_chains.pubsub.publisher import Publisher
-from io_chains.pubsub.sentinel import END_OF_STREAM
+from io_chains.links.collector import Collector
+from io_chains._internal.publisher import Publisher
+from io_chains._internal.sentinel import END_OF_STREAM
 
 
 class TestPublisher(unittest.IsolatedAsyncioTestCase):

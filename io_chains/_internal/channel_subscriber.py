@@ -1,8 +1,8 @@
 from typing import Any
 
-from io_chains.pubsub.envelope import Envelope
-from io_chains.pubsub.sentinel import EndOfStream
-from io_chains.pubsub.subscriber import Subscriber
+from io_chains._internal.envelope import Envelope
+from io_chains._internal.sentinel import EndOfStream
+from io_chains._internal.subscriber import Subscriber
 
 
 class ChannelSubscriber(Subscriber):

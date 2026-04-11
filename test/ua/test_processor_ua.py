@@ -4,9 +4,8 @@ from logging import getLogger
 
 from httpx import AsyncClient, Response
 
-from io_chains.links.link import Link
-from io_chains.pubsub.callback_subscriber import CallbackSubscriber
-from io_chains.pubsub.collector import Collector
+from io_chains.links.processor import Processor
+from io_chains.links.collector import Collector
 
 logger = getLogger()
 
@@ -24,16 +23,16 @@ async def get_json(resp):
     return await resp.json()
 
 
-class TestLink(unittest.IsolatedAsyncioTestCase):
-    async def test_link_should_extract_rick_and_morty(self):
+class TestProcessor(unittest.IsolatedAsyncioTestCase):
+    async def test_processor_should_extract_rick_and_morty(self):
         results = Collector()
 
-        pipeline = Link(
+        pipeline = Processor(
             source=get_rick_and_morty,
-            transformer=get_json,
+            processor=get_json,
             subscribers=[
                 results,
-                CallbackSubscriber(callback=lambda value: print(f"API response: {list(value.keys())}")),
+                Processor(processor=lambda value: print(f"API response: {list(value.keys())}") or value),
             ],
         )
 

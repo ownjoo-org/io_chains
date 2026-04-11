@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "oj-io-chains"
-version = "0.0.3"
+version = "0.0.4"
 description = "Lightweight async data pipelines using a publisher/subscriber pattern"
 readme = "README.md"
 license = "MIT"
@@ -16,6 +16,7 @@ authors = [
 requires-python = ">=3.11"
 dependencies = [
     "httpx",
+    "oj-persistence",
 ]
 
 [project.urls]

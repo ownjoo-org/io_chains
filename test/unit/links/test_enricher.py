@@ -2,12 +2,12 @@
 Tests for Enricher, Relation, Envelope, ChannelSubscriber, and Limit.
 
 Design intent:
-  - subscribe(subscriber, channel=None) on Link wires a ChannelSubscriber adapter
+  - subscribe(subscriber, channel=None) on a Link wires a ChannelSubscriber adapter
     so items arrive at the subscriber tagged with which channel they came from.
   - Envelope(data, channel) is the lightweight wrapper emitted by ChannelSubscriber.
   - Relation describes a foreign-key-style join: which field on the primary item
     maps to which field on related items (from a named channel).
-  - Enricher is a Linkable that collects all side-channel data first, then
+  - Enricher is a Link that collects all side-channel data first, then
     streams primary items enriched according to a list of Relations.
   - Limit(n) is a stateful callable that passes through the first n items and
     returns SKIP for all subsequent ones.
@@ -17,11 +17,11 @@ import unittest
 from asyncio import create_task, gather
 
 from io_chains.links.enricher import Enricher, Relation
-from io_chains.links.limit import Limit
-from io_chains.links.link import Link
-from io_chains.pubsub.collector import Collector
-from io_chains.pubsub.envelope import Envelope
-from io_chains.pubsub.sentinel import SKIP
+from io_chains.links.processor import Processor
+from test.helpers.limit import Limit
+from io_chains.links.collector import Collector
+from io_chains._internal.envelope import Envelope
+from io_chains._internal.sentinel import SKIP
 
 # ---------------------------------------------------------------------------
 # Limit
@@ -31,21 +31,21 @@ from io_chains.pubsub.sentinel import SKIP
 class TestLimit(unittest.IsolatedAsyncioTestCase):
     async def test_limit_passes_first_n_items(self):
         results = Collector()
-        link = Link(source=list(range(10)), transformer=Limit(3), subscribers=[results])
+        link = Processor(source=list(range(10)), processor=Limit(3), subscribers=[results])
         await link()
         actual = [item async for item in results]
         self.assertEqual([0, 1, 2], actual)
 
     async def test_limit_of_zero_skips_all(self):
         results = Collector()
-        link = Link(source=[1, 2, 3], transformer=Limit(0), subscribers=[results])
+        link = Processor(source=[1, 2, 3], processor=Limit(0), subscribers=[results])
         await link()
         actual = [item async for item in results]
         self.assertEqual([], actual)
 
     async def test_limit_larger_than_source_passes_all(self):
         results = Collector()
-        link = Link(source=[1, 2, 3], transformer=Limit(100), subscribers=[results])
+        link = Processor(source=[1, 2, 3], processor=Limit(100), subscribers=[results])
         await link()
         actual = [item async for item in results]
         self.assertEqual([1, 2, 3], actual)
@@ -92,7 +92,7 @@ class TestSubscribeWithChannel(unittest.IsolatedAsyncioTestCase):
     async def test_subscribe_without_channel_behaves_like_normal_subscriber(self):
         """subscribe(sub) with no channel should just wire sub directly."""
         results = Collector()
-        link = Link(source=[1, 2, 3])
+        link = Processor(source=[1, 2, 3])
         link.subscribe(results)
         await link()
         actual = [item async for item in results]
@@ -100,7 +100,7 @@ class TestSubscribeWithChannel(unittest.IsolatedAsyncioTestCase):
 
     async def test_subscribe_with_channel_wraps_items_in_envelope(self):
         results = Collector()
-        link = Link(source=[10, 20])
+        link = Processor(source=[10, 20])
         link.subscribe(results, channel="nums")
         await link()
         actual = [item async for item in results]
@@ -111,10 +111,10 @@ class TestSubscribeWithChannel(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(20, actual[1].data)
 
     async def test_subscribe_multiple_channels_to_same_downstream(self):
-        """Two upstream Links publish to the same downstream with different channel tags."""
+        """Two upstream Processors publish to the same downstream with different channel tags."""
         downstream = Collector()
-        link_a = Link(source=["a1", "a2"])
-        link_b = Link(source=["b1"])
+        link_a = Processor(source=["a1", "a2"])
+        link_b = Processor(source=["b1"])
         link_a.subscribe(downstream, channel="A")
         link_b.subscribe(downstream, channel="B")
         await gather(create_task(link_a()), create_task(link_b()))
@@ -184,13 +184,13 @@ class TestEnricher(unittest.IsolatedAsyncioTestCase):
         results = Collector()
         enricher = Enricher(relations=relations, primary_channel="chars", subscribers=[results])
 
-        chars_link = Link(source=chars)
+        chars_link = Processor(source=chars)
         chars_link.subscribe(enricher, channel="chars")
 
-        loc_link = Link(source=locations)
+        loc_link = Processor(source=locations)
         loc_link.subscribe(enricher, channel="locations")
 
-        ep_link = Link(source=episodes)
+        ep_link = Processor(source=episodes)
         ep_link.subscribe(enricher, channel="episodes")
 
         await gather(

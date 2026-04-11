@@ -1,4 +1,4 @@
-from io_chains.pubsub.sentinel import SKIP
+from io_chains._internal.sentinel import SKIP
 
 
 class Limit:

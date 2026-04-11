@@ -5,7 +5,7 @@ Design principles under test:
   - A Link is a single processing unit. Knows only its immediate neighbors.
   - A Chain is the orchestrator. Contains Links or other Chains. Manages
     their concurrent execution internally so callers don't need gather().
-  - A Chain is itself Linkable: it has an input face (first link) and an
+  - A Chain is itself a Link: it has an input face (first link) and an
     output face (last link), and can be connected to other Links or Chains.
   - When a Chain is a standalone pipeline, await chain() is all you need.
   - When a Chain is a subscriber of an external Link, the caller still needs
@@ -20,9 +20,8 @@ from asyncio import create_task, gather
 from collections.abc import AsyncGenerator
 
 from io_chains.links.chain import Chain
-from io_chains.links.link import Link
-from io_chains.pubsub.callback_subscriber import CallbackSubscriber
-from io_chains.pubsub.collector import Collector
+from io_chains.links.processor import Processor
+from io_chains.links.collector import Collector
 
 # ---------------------------------------------------------------------------
 # Simulated async data sources
@@ -54,18 +53,18 @@ class TestChain(unittest.IsolatedAsyncioTestCase):
     def test_chain_should_instantiate(self):
         chain = Chain(
             links=[
-                Link(transformer=lambda x: x * 2),
-                Link(transformer=lambda x: x + 1),
+                Processor(processor=lambda x: x * 2),
+                Processor(processor=lambda x: x + 1),
             ]
         )
         self.assertIsInstance(chain, Chain)
 
     def test_chain_should_accept_links_and_chains(self):
-        # A Chain can contain Links or other Chains as its elements
-        inner = Chain(links=[Link(transformer=lambda x: x * 2)])
+        # A Chain can contain Processors or other Chains as its elements
+        inner = Chain(links=[Processor(processor=lambda x: x * 2)])
         outer = Chain(
             links=[
-                Link(transformer=lambda x: x + 1),
+                Processor(processor=lambda x: x + 1),
                 inner,
             ]
         )
@@ -80,8 +79,8 @@ class TestChain(unittest.IsolatedAsyncioTestCase):
         chain = Chain(
             source=[1, 2, 3],
             links=[
-                Link(transformer=lambda x: x * 2),
-                Link(transformer=lambda x: x + 10),
+                Processor(processor=lambda x: x * 2),
+                Processor(processor=lambda x: x + 10),
             ],
             subscribers=[results],
         )
@@ -98,11 +97,11 @@ class TestChain(unittest.IsolatedAsyncioTestCase):
         chain = Chain(
             source=[1, 2, 3],
             links=[
-                Link(transformer=lambda x: x + 1),  # 2, 3, 4
-                Link(transformer=lambda x: x * 3),  # 6, 9, 12
-                Link(transformer=lambda x: x - 1),  # 5, 8, 11
-                Link(transformer=lambda x: x * 2),  # 10, 16, 22
-                Link(transformer=str),  # '10', '16', '22'
+                Processor(processor=lambda x: x + 1),  # 2, 3, 4
+                Processor(processor=lambda x: x * 3),  # 6, 9, 12
+                Processor(processor=lambda x: x - 1),  # 5, 8, 11
+                Processor(processor=lambda x: x * 2),  # 10, 16, 22
+                Processor(processor=str),               # '10', '16', '22'
             ],
             subscribers=[results],
         )
@@ -116,25 +115,21 @@ class TestChain(unittest.IsolatedAsyncioTestCase):
         # The last link in a Chain can publish to multiple subscribers
         sink1 = Collector()
         sink2 = Collector()
-        audit = []
+        sink3 = Collector()
 
         chain = Chain(
             source=[1, 2, 3],
             links=[
-                Link(transformer=lambda x: x * 2),
+                Processor(processor=lambda x: x * 2),
             ],
-            subscribers=[
-                sink1,
-                sink2,
-                CallbackSubscriber(callback=lambda x: audit.append(x)),
-            ],
+            subscribers=[sink1, sink2, sink3],
         )
 
         await chain()
 
         self.assertEqual([item async for item in sink1], [2, 4, 6])
         self.assertEqual([item async for item in sink2], [2, 4, 6])
-        self.assertEqual(audit, [2, 4, 6])
+        self.assertEqual([item async for item in sink3], [2, 4, 6])
 
     # --- Chain containing Chains ---
 
@@ -144,15 +139,15 @@ class TestChain(unittest.IsolatedAsyncioTestCase):
 
         normalise = Chain(
             links=[
-                Link(transformer=lambda x: abs(x)),
-                Link(transformer=lambda x: round(x, 2)),
+                Processor(processor=lambda x: abs(x)),
+                Processor(processor=lambda x: round(x, 2)),
             ]
         )
 
         stringify = Chain(
             links=[
-                Link(transformer=lambda x: x * 100),
-                Link(transformer=lambda x: f"{x:.0f}%"),
+                Processor(processor=lambda x: x * 100),
+                Processor(processor=lambda x: f"{x:.0f}%"),
             ]
         )
 
@@ -168,22 +163,22 @@ class TestChain(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(actual, ["16%", "100%", "30%"])
 
     async def test_mixed_chain_of_links_and_chains(self):
-        # A Chain containing a mix of Links and sub-Chains
+        # A Chain containing a mix of Processors and sub-Chains
         results = Collector()
 
         middle_chain = Chain(
             links=[
-                Link(transformer=lambda x: x * 10),
-                Link(transformer=lambda x: x - 1),
+                Processor(processor=lambda x: x * 10),
+                Processor(processor=lambda x: x - 1),
             ]
         )
 
         pipeline = Chain(
             source=[1, 2, 3],
             links=[
-                Link(transformer=lambda x: x + 1),  # 2, 3, 4
-                middle_chain,  # *10-1: 19, 29, 39
-                Link(transformer=str),  # '19', '29', '39'
+                Processor(processor=lambda x: x + 1),  # 2, 3, 4
+                middle_chain,                           # *10-1: 19, 29, 39
+                Processor(processor=str),               # '19', '29', '39'
             ],
             subscribers=[results],
         )
@@ -193,7 +188,7 @@ class TestChain(unittest.IsolatedAsyncioTestCase):
         actual = [item async for item in results]
         self.assertEqual(actual, ["19", "29", "39"])
 
-    # --- Chain as Linkable (connectable to other Links/Chains) ---
+    # --- Chain as Link (connectable to other Links/Chains) ---
 
     async def test_chain_as_subscriber_of_link(self):
         # An external Link feeds into a Chain.
@@ -202,13 +197,13 @@ class TestChain(unittest.IsolatedAsyncioTestCase):
 
         transform_chain = Chain(
             links=[
-                Link(transformer=lambda x: x * 2),
-                Link(transformer=lambda x: x + 100),
+                Processor(processor=lambda x: x * 2),
+                Processor(processor=lambda x: x + 100),
             ],
             subscribers=[results],
         )
 
-        source = Link(
+        source = Processor(
             source=[1, 2, 3],
             subscribers=[transform_chain],
         )
@@ -228,7 +223,7 @@ class TestChain(unittest.IsolatedAsyncioTestCase):
 
         chain_b = Chain(
             links=[
-                Link(transformer=lambda x: x * 3),
+                Processor(processor=lambda x: x * 3),
             ],
             subscribers=[results],
         )
@@ -236,7 +231,7 @@ class TestChain(unittest.IsolatedAsyncioTestCase):
         chain_a = Chain(
             source=[1, 2, 3],
             links=[
-                Link(transformer=lambda x: x + 1),
+                Processor(processor=lambda x: x + 1),
             ],
             subscribers=[chain_b],
         )
@@ -258,8 +253,8 @@ class TestChain(unittest.IsolatedAsyncioTestCase):
         pipeline = Chain(
             source=source_records,
             links=[
-                Link(transformer=lambda r: {**r, "name": r["name"].upper()}),
-                Link(transformer=enrich_with_score),
+                Processor(processor=lambda r: {**r, "name": r["name"].upper()}),
+                Processor(processor=enrich_with_score),
             ],
             subscribers=[results],
         )
@@ -274,23 +269,20 @@ class TestChain(unittest.IsolatedAsyncioTestCase):
 
     async def test_reusable_chain_embedded_in_larger_pipeline(self):
         # A packaged sub-pipeline (Chain) reused inside a larger flow.
-        # The outer caller treats the sub-chain as a single black-box Linkable.
         results = Collector()
 
-        # Reusable sub-pipeline: could be imported from a library
         normalise_records = Chain(
             links=[
-                Link(transformer=lambda r: {**r, "name": r["name"].strip().title()}),
-                Link(transformer=enrich_with_score),
+                Processor(processor=lambda r: {**r, "name": r["name"].strip().title()}),
+                Processor(processor=enrich_with_score),
             ]
         )
 
-        # Larger pipeline uses it as one step
         full_pipeline = Chain(
             source=source_records,
             links=[
                 normalise_records,
-                Link(transformer=lambda r: f"{r['name']} ({r['score']})"),
+                Processor(processor=lambda r: f"{r['name']} ({r['score']})"),
             ],
             subscribers=[results],
         )
